@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eclipse Solar Total — León 2026</title>
+  <meta name="description" content="Planeador familiar para observar o Eclipse Solar Total de 12 de Agosto de 2026 perto de León, Espanha." />
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Leaflet (opcional, usa-se se carregar; existe fallback no app.js) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+  <!-- ============== TOPO / RESUMO ============== -->
+  <header class="topbar" role="banner">
+    <div class="container topbar-row">
+      <div class="brand">
+        <h1 data-i18n="appTitle">Eclipse Solar Total — León 2026</h1>
+        <p class="subtitle" data-i18n="appSubtitle">12 de Agosto de 2026 · Plano de observação para a família</p>
+      </div>
+      <div class="lang-toggle" role="group" aria-label="Language toggle">
+        <label for="lang-select" class="sr-only" data-i18n="languageLabel">Idioma</label>
+        <select id="lang-select" aria-label="Idioma / Language">
+          <option value="pt">PT</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="container summary-grid" aria-label="Resumo">
+      <div class="summary-card">
+        <span class="summary-label" data-i18n="myBase">Base</span>
+        <span class="summary-value" id="summary-base">León</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label" data-i18n="primarySpot">Spot Principal</span>
+        <span class="summary-value" id="summary-primary" data-i18n="notSet">(por definir)</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label" data-i18n="backupSpot">Spot Backup</span>
+        <span class="summary-value" id="summary-backup" data-i18n="notSet">(por definir)</span>
+      </div>
+    </div>
+
+    <div class="container countdown" id="countdown" aria-live="polite">
+      <span class="countdown-label" data-i18n="countdownLabel">Até à totalidade</span>
+      <span class="countdown-value" id="countdown-value">—</span>
+    </div>
+  </header>
+
+  <main class="container" role="main">
+
+    <!-- ============== SPOTS ============== -->
+    <section id="section-spots" aria-labelledby="h-spots">
+      <h2 id="h-spots" data-i18n="sectionSpots">Spots de Observação (perto de León)</h2>
+
+      <!-- Mapa (opcional) -->
+      <div id="map" aria-label="Mapa dos spots" role="region"></div>
+      <p id="map-fallback" class="map-fallback hidden" data-i18n="mapFallback">
+        Mapa indisponível — usa a lista de spots abaixo.
+      </p>
+
+      <!-- Filtros -->
+      <div class="filters" aria-label="Filtros e ordenação">
+        <fieldset>
+          <legend data-i18n="filterDistance">Distância</legend>
+          <label><input type="radio" name="f-distance" value="all" checked /> <span data-i18n="all">Todos</span></label>
+          <label><input type="radio" name="f-distance" value="near" /> <span data-i18n="near">Próximo</span></label>
+          <label><input type="radio" name="f-distance" value="medium" /> <span data-i18n="medium">Médio</span></label>
+          <label><input type="radio" name="f-distance" value="long" /> <span data-i18n="long">Longo</span></label>
+        </fieldset>
+
+        <fieldset>
+          <legend data-i18n="filterType">Tipo</legend>
+          <label><input type="radio" name="f-type" value="all" checked /> <span data-i18n="all">Todos</span></label>
+          <label><input type="radio" name="f-type" value="plano" /> <span data-i18n="typeFlat">Plano</span></label>
+          <label><input type="radio" name="f-type" value="elevado" /> <span data-i18n="typeHigh">Elevado</span></label>
+          <label><input type="radio" name="f-type" value="montanha" /> <span data-i18n="typeMountain">Montanha</span></label>
+        </fieldset>
+
+        <fieldset>
+          <legend data-i18n="filterPriority">Prioridade</legend>
+          <label><input type="radio" name="f-priority" value="all" checked /> <span data-i18n="all">Todos</span></label>
+          <label><input type="radio" name="f-priority" value="seguro" /> <span data-i18n="safer">Mais Seguro</span></label>
+          <label><input type="radio" name="f-priority" value="fotogenico" /> <span data-i18n="photogenic">Mais Fotogénico</span></label>
+        </fieldset>
+
+        <div class="sort">
+          <label for="sort-select"><span data-i18n="sortBy">Ordenar por</span></label>
+          <select id="sort-select">
+            <option value="facility" data-i18n="sortFacility">Facilidade / Logística</option>
+            <option value="experience" data-i18n="sortExperience">Experiência</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Lista de spots -->
+      <div id="spots-grid" class="cards-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- ============== HOTÉIS ============== -->
+    <section id="section-hotels" aria-labelledby="h-hotels">
+      <h2 id="h-hotels" data-i18n="sectionHotels">Hotéis em León (base recomendada)</h2>
+      <div id="hotels-grid" class="cards-grid"></div>
+      <p class="disclaimer" data-i18n="hotelDisclaimer">
+        Confirmar disponibilidade e estacionamento no momento da reserva.
+      </p>
+    </section>
+
+    <!-- ============== METEOROLOGIA ============== -->
+    <section id="section-meteo" aria-labelledby="h-meteo">
+      <h2 id="h-meteo" data-i18n="sectionWeather">Meteorologia (Open-Meteo)</h2>
+      <div class="meteo-controls">
+        <button type="button" id="btn-refresh-meteo" class="btn btn-primary" data-i18n="refreshForecast">
+          Atualizar previsão
+        </button>
+        <p class="meteo-status" id="meteo-status"></p>
+      </div>
+      <div id="meteo-suggestion" class="meteo-suggestion hidden" role="status" aria-live="polite"></div>
+      <div id="meteo-grid" class="cards-grid"></div>
+      <p class="disclaimer" id="meteo-disclaimer"></p>
+    </section>
+
+    <!-- ============== PLANO DO DIA + MATRIZ ============== -->
+    <section id="section-plan" aria-labelledby="h-plan">
+      <h2 id="h-plan" data-i18n="sectionPlan">Plano do Dia</h2>
+
+      <div class="weather-row">
+        <label for="weather-select"><span data-i18n="weather">Condição do tempo</span></label>
+        <select id="weather-select"></select>
+        <p id="weather-reco" class="weather-reco" aria-live="polite"></p>
+      </div>
+
+      <ol id="timeline" class="timeline" aria-label="Plano do dia"></ol>
+
+      <h3 data-i18n="sectionDecision">Matriz de Decisão</h3>
+      <table class="decision-table" aria-describedby="h-plan">
+        <thead>
+          <tr>
+            <th data-i18n="weather">Condição do tempo</th>
+            <th data-i18n="recommended">Recomendado</th>
+          </tr>
+        </thead>
+        <tbody id="decision-body"></tbody>
+      </table>
+
+      <h3 data-i18n="sectionPhases">Fases do Eclipse</h3>
+      <ol id="phases" class="phases" aria-label="Fases do eclipse"></ol>
+      <p class="disclaimer" data-i18n="approxDisclaimer">
+        Valores aproximados — confirmar com fontes oficiais perto da data.
+      </p>
+    </section>
+
+    <!-- ============== O QUE ESPERAR ============== -->
+    <section id="section-expectations" aria-labelledby="h-expectations">
+      <h2 id="h-expectations" data-i18n="sectionExpectations">O que Esperar</h2>
+      <div id="expectations-grid" class="cards-grid"></div>
+    </section>
+
+    <!-- ============== CHECKLIST ============== -->
+    <section id="section-checklist" aria-labelledby="h-checklist">
+      <h2 id="h-checklist" data-i18n="sectionChecklist">Checklist</h2>
+      <ul id="checklist" class="checklist"></ul>
+      <div class="actions">
+        <button type="button" id="btn-reset" class="btn btn-secondary" data-i18n="resetChecklist">
+          Reset checklist
+        </button>
+        <button type="button" id="btn-print" class="btn btn-primary" data-i18n="printPdf">
+          Imprimir / Guardar PDF
+        </button>
+      </div>
+    </section>
+
+    <!-- ============== NOTAS ============== -->
+    <section id="section-notes" aria-labelledby="h-notes">
+      <h2 id="h-notes" data-i18n="sectionNotes">Notas Importantes</h2>
+      <ul id="notes-list" class="notes"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="container" data-i18n="footer">
+      Dados editáveis em data.js. App estática — funciona offline depois de carregada.
+    </p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Leaflet JS opcional -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""
+          onerror="window.__leafletFailed = true;"></script>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Node (not used in app, but build-bundle.js is Node)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Logs / temp
+*.log
+*.tmp
+
+# Build artifacts — NOTE: we *do* commit eclipse-leon-2026.html
+# because it's the single-file bundle people share.

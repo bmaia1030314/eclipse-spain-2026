@@ -1,0 +1,2685 @@
+<!DOCTYPE html>
+<!--
+  Eclipse Solar Total — León 2026
+  Single-file build. Tudo (HTML + CSS + dados + lógica) está aqui.
+  Apenas Leaflet é carregado via CDN — se falhar, o resto continua a funcionar.
+  Gerado em: 2026-05-13T16:47:11.188Z
+-->
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eclipse Solar Total — León 2026</title>
+  <meta name="description" content="Planeador familiar para observar o Eclipse Solar Total de 12 de Agosto de 2026 perto de León, Espanha." />
+
+  <style>
+/* ============================================================
+   Eclipse 2026 — styles.css
+   Mobile-first, sem frameworks. Layout limpo, cards, badges,
+   timeline e impressão.
+   ============================================================ */
+
+:root {
+  --bg: #0f172a;            /* azul-noite */
+  --bg-soft: #1e293b;
+  --surface: #ffffff;
+  --surface-alt: #f8fafc;
+  --text: #0f172a;
+  --text-soft: #475569;
+  --muted: #94a3b8;
+  --primary: #f59e0b;       /* âmbar (sol) */
+  --primary-dark: #b45309;
+  --accent: #2563eb;
+  --danger: #b91c1c;
+  --success: #16a34a;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.12);
+  --maxw: 1100px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--surface-alt);
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- Topbar / Header ---------- */
+.topbar {
+  background: linear-gradient(135deg, var(--bg) 0%, var(--bg-soft) 100%);
+  color: #fff;
+  padding: 20px 0 16px;
+  border-bottom: 4px solid var(--primary);
+}
+
+.topbar-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.lang-toggle select {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.95rem;
+}
+.lang-toggle select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.summary-card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+}
+.summary-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #cbd5e1;
+}
+.summary-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 2px;
+}
+
+/* ---------- Countdown ---------- */
+.countdown {
+  margin-top: 14px;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.45);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.countdown-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fbbf24;
+}
+.countdown-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.countdown.is-active .countdown-value { color: var(--primary); }
+.countdown.is-done   .countdown-value { color: #cbd5e1; }
+
+/* ---------- Sun diagram (in spot cards) ---------- */
+.sun-diagram {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  display: block;
+  margin: 6px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #0f172a;
+}
+.sun-diagram-caption {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+/* ---------- Phases list ---------- */
+.phases {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 4px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.phase-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-sm);
+}
+.phase-code {
+  display: inline-block;
+  min-width: 42px;
+  padding: 3px 6px;
+  background: var(--primary);
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-align: center;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.phase-body { font-size: 0.92rem; }
+.phase-time {
+  font-weight: 600;
+  color: var(--primary-dark);
+  font-variant-numeric: tabular-nums;
+}
+.phase-title { font-weight: 600; margin-left: 6px; }
+.phase-detail {
+  display: block;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+.phase-item.is-totality {
+  border-left-color: var(--danger);
+  background: #fffbeb;
+}
+.phase-item.is-totality .phase-code { background: var(--danger); color: #fff; }
+.phase-item.is-sunset { border-left-color: var(--accent); }
+.phase-item.is-skip { opacity: 0.6; }
+
+/* ---------- Sections ---------- */
+main section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin: 20px 0;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--primary);
+  display: inline-block;
+}
+
+h3 {
+  font-size: 1.05rem;
+  margin: 18px 0 8px;
+}
+
+/* ---------- Filters ---------- */
+.filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: var(--surface-alt);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.filters fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 0;
+  background: #fff;
+}
+.filters legend {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+  padding: 0 4px;
+}
+.filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.filters input[type="radio"] {
+  accent-color: var(--primary);
+}
+
+.sort {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sort select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 0.95rem;
+}
+
+/* ---------- Cards ---------- */
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+.card.is-primary { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(245,158,11,0.25); }
+.card.is-backup  { border-color: var(--accent);  box-shadow: 0 0 0 2px rgba(37,99,235,0.18); }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+.badge-primary { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+.badge-accent  { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+.badge-warn    { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.badge-ok      { background: #dcfce7; border-color: #86efac; color: #166534; }
+
+.card-section { font-size: 0.92rem; }
+.card-section strong { color: var(--text); }
+.card-section ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--text-soft);
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.05s ease;
+  background: var(--surface-alt);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn:hover { background: #eef2f7; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #1a1a1a;
+  border-color: var(--primary-dark);
+}
+.btn-primary:hover { background: #fbbf24; }
+
+.btn-secondary {
+  background: #fff;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: #1d4ed8;
+}
+.btn-accent:hover { background: #1d4ed8; }
+
+.btn[aria-pressed="true"] {
+  background: var(--success);
+  color: #fff;
+  border-color: #166534;
+}
+
+/* ---------- Map ---------- */
+#map {
+  height: 280px;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+  background: var(--surface-alt);
+}
+.map-fallback {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  margin: 0 0 14px;
+}
+
+/* ---------- Hotels ---------- */
+.hotel-card { padding: 14px; }
+.hotel-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.disclaimer {
+  margin-top: 14px;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+/* ---------- Weather selector ---------- */
+.weather-row {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.weather-row label { font-weight: 500; font-size: 0.95rem; }
+.weather-row select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 0.95rem;
+}
+.weather-reco {
+  margin: 0;
+  padding: 8px 10px;
+  background: #fffbeb;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  color: var(--primary-dark);
+}
+
+/* ---------- Timeline ---------- */
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  position: relative;
+  border-left: 3px solid var(--primary);
+}
+.timeline li {
+  position: relative;
+  padding: 6px 0 14px 18px;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 12px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.timeline-time {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--primary-dark);
+}
+.timeline-title {
+  display: block;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.timeline-detail {
+  display: block;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  margin-top: 2px;
+}
+.timeline li.is-highlight {
+  background: #fffbeb;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Decision table ---------- */
+.decision-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.decision-table th,
+.decision-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.decision-table th {
+  background: var(--surface-alt);
+  font-weight: 600;
+}
+.decision-table tr.is-active td {
+  background: #fffbeb;
+  font-weight: 500;
+}
+
+/* ---------- Checklist ---------- */
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.checklist li {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+}
+.checklist label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 0;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+.checklist input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+.checklist input:checked + span {
+  color: var(--text-soft);
+  text-decoration: line-through;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Notes ---------- */
+.notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.notes li {
+  padding: 8px 12px 8px 28px;
+  position: relative;
+  border-left: 3px solid var(--primary);
+  background: var(--surface-alt);
+  margin-bottom: 6px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.95rem;
+}
+.notes li::before {
+  content: "!";
+  position: absolute;
+  left: 10px; top: 8px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 14px;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  background: var(--bg);
+  color: #cbd5e1;
+  padding: 14px 0;
+  margin-top: 24px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 9999;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---------- Responsive: tablet+ ---------- */
+@media (min-width: 640px) {
+  .brand h1 { font-size: 1.6rem; }
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .cards-grid { grid-template-columns: repeat(2, 1fr); }
+  .filters { grid-template-columns: repeat(2, 1fr) auto; align-items: end; }
+  .checklist { grid-template-columns: repeat(2, 1fr); }
+  .weather-row { grid-template-columns: auto 1fr; align-items: center; }
+  .weather-row .weather-reco { grid-column: 1 / -1; }
+  #map { height: 360px; }
+}
+
+@media (min-width: 960px) {
+  .brand h1 { font-size: 1.8rem; }
+  .cards-grid { grid-template-columns: repeat(2, 1fr); }
+  #spots-grid.cards-grid { grid-template-columns: repeat(2, 1fr); }
+  .filters { grid-template-columns: 1fr 1fr 1fr auto; }
+}
+
+/* ---------- Meteo section ---------- */
+.meteo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.meteo-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.meteo-suggestion {
+  background: #fffbeb;
+  border: 1px dashed var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+.meteo-suggestion-text {
+  font-size: 0.92rem;
+  color: var(--primary-dark);
+  margin: 0;
+  flex: 1 1 280px;
+}
+.meteo-suggestion-text strong { color: var(--text); }
+
+.meteo-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.meteo-stats > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.88rem;
+}
+.meteo-stats dt {
+  color: var(--text-soft);
+  margin: 0;
+}
+.meteo-stats dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.meteo-summary {
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  margin: 0;
+}
+.meteo-empty {
+  background: var(--surface-alt);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  text-align: center;
+}
+.meteo-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  margin: 0 0 12px;
+}
+
+.btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- Print ---------- */
+@media print {
+  body { background: #fff; color: #000; }
+  .topbar { background: #fff; color: #000; border-bottom: 2px solid #000; }
+  .topbar h1, .subtitle, .summary-value, .summary-label { color: #000 !important; }
+  .countdown { background: #fff; border: 1px solid #999; }
+  .countdown-label, .countdown-value { color: #000 !important; }
+  .lang-toggle, .filters, .card-actions, .actions, .weather-row select, .footer, #map, .toast {
+    display: none !important;
+  }
+  main section {
+    box-shadow: none;
+    border: 1px solid #999;
+    page-break-inside: avoid;
+    margin: 10px 0;
+  }
+  .card { box-shadow: none; border: 1px solid #999; page-break-inside: avoid; }
+  .badge { border: 1px solid #999; background: #fff; color: #000; }
+  .sun-diagram { background: #fff; }
+  a { color: #000; text-decoration: none; }
+}
+
+  </style>
+
+  <!-- Leaflet (opcional, usa-se se carregar; existe fallback no app.js) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+
+  <!-- ============== TOPO / RESUMO ============== -->
+  <header class="topbar" role="banner">
+    <div class="container topbar-row">
+      <div class="brand">
+        <h1 data-i18n="appTitle">Eclipse Solar Total — León 2026</h1>
+        <p class="subtitle" data-i18n="appSubtitle">12 de Agosto de 2026 · Plano de observação para a família</p>
+      </div>
+      <div class="lang-toggle" role="group" aria-label="Language toggle">
+        <label for="lang-select" class="sr-only" data-i18n="languageLabel">Idioma</label>
+        <select id="lang-select" aria-label="Idioma / Language">
+          <option value="pt">PT</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="container summary-grid" aria-label="Resumo">
+      <div class="summary-card">
+        <span class="summary-label" data-i18n="myBase">Base</span>
+        <span class="summary-value" id="summary-base">León</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label" data-i18n="primarySpot">Spot Principal</span>
+        <span class="summary-value" id="summary-primary" data-i18n="notSet">(por definir)</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label" data-i18n="backupSpot">Spot Backup</span>
+        <span class="summary-value" id="summary-backup" data-i18n="notSet">(por definir)</span>
+      </div>
+    </div>
+
+    <div class="container countdown" id="countdown" aria-live="polite">
+      <span class="countdown-label" data-i18n="countdownLabel">Até à totalidade</span>
+      <span class="countdown-value" id="countdown-value">—</span>
+    </div>
+  </header>
+
+  <main class="container" role="main">
+
+    <!-- ============== SPOTS ============== -->
+    <section id="section-spots" aria-labelledby="h-spots">
+      <h2 id="h-spots" data-i18n="sectionSpots">Spots de Observação (perto de León)</h2>
+
+      <!-- Mapa (opcional) -->
+      <div id="map" aria-label="Mapa dos spots" role="region"></div>
+      <p id="map-fallback" class="map-fallback hidden" data-i18n="mapFallback">
+        Mapa indisponível — usa a lista de spots abaixo.
+      </p>
+
+      <!-- Filtros -->
+      <div class="filters" aria-label="Filtros e ordenação">
+        <fieldset>
+          <legend data-i18n="filterDistance">Distância</legend>
+          <label><input type="radio" name="f-distance" value="all" checked /> <span data-i18n="all">Todos</span></label>
+          <label><input type="radio" name="f-distance" value="near" /> <span data-i18n="near">Próximo</span></label>
+          <label><input type="radio" name="f-distance" value="medium" /> <span data-i18n="medium">Médio</span></label>
+          <label><input type="radio" name="f-distance" value="long" /> <span data-i18n="long">Longo</span></label>
+        </fieldset>
+
+        <fieldset>
+          <legend data-i18n="filterType">Tipo</legend>
+          <label><input type="radio" name="f-type" value="all" checked /> <span data-i18n="all">Todos</span></label>
+          <label><input type="radio" name="f-type" value="plano" /> <span data-i18n="typeFlat">Plano</span></label>
+          <label><input type="radio" name="f-type" value="elevado" /> <span data-i18n="typeHigh">Elevado</span></label>
+          <label><input type="radio" name="f-type" value="montanha" /> <span data-i18n="typeMountain">Montanha</span></label>
+        </fieldset>
+
+        <fieldset>
+          <legend data-i18n="filterPriority">Prioridade</legend>
+          <label><input type="radio" name="f-priority" value="all" checked /> <span data-i18n="all">Todos</span></label>
+          <label><input type="radio" name="f-priority" value="seguro" /> <span data-i18n="safer">Mais Seguro</span></label>
+          <label><input type="radio" name="f-priority" value="fotogenico" /> <span data-i18n="photogenic">Mais Fotogénico</span></label>
+        </fieldset>
+
+        <div class="sort">
+          <label for="sort-select"><span data-i18n="sortBy">Ordenar por</span></label>
+          <select id="sort-select">
+            <option value="facility" data-i18n="sortFacility">Facilidade / Logística</option>
+            <option value="experience" data-i18n="sortExperience">Experiência</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Lista de spots -->
+      <div id="spots-grid" class="cards-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- ============== HOTÉIS ============== -->
+    <section id="section-hotels" aria-labelledby="h-hotels">
+      <h2 id="h-hotels" data-i18n="sectionHotels">Hotéis em León (base recomendada)</h2>
+      <div id="hotels-grid" class="cards-grid"></div>
+      <p class="disclaimer" data-i18n="hotelDisclaimer">
+        Confirmar disponibilidade e estacionamento no momento da reserva.
+      </p>
+    </section>
+
+    <!-- ============== METEOROLOGIA ============== -->
+    <section id="section-meteo" aria-labelledby="h-meteo">
+      <h2 id="h-meteo" data-i18n="sectionWeather">Meteorologia (Open-Meteo)</h2>
+      <div class="meteo-controls">
+        <button type="button" id="btn-refresh-meteo" class="btn btn-primary" data-i18n="refreshForecast">
+          Atualizar previsão
+        </button>
+        <p class="meteo-status" id="meteo-status"></p>
+      </div>
+      <div id="meteo-suggestion" class="meteo-suggestion hidden" role="status" aria-live="polite"></div>
+      <div id="meteo-grid" class="cards-grid"></div>
+      <p class="disclaimer" id="meteo-disclaimer"></p>
+    </section>
+
+    <!-- ============== PLANO DO DIA + MATRIZ ============== -->
+    <section id="section-plan" aria-labelledby="h-plan">
+      <h2 id="h-plan" data-i18n="sectionPlan">Plano do Dia</h2>
+
+      <div class="weather-row">
+        <label for="weather-select"><span data-i18n="weather">Condição do tempo</span></label>
+        <select id="weather-select"></select>
+        <p id="weather-reco" class="weather-reco" aria-live="polite"></p>
+      </div>
+
+      <ol id="timeline" class="timeline" aria-label="Plano do dia"></ol>
+
+      <h3 data-i18n="sectionDecision">Matriz de Decisão</h3>
+      <table class="decision-table" aria-describedby="h-plan">
+        <thead>
+          <tr>
+            <th data-i18n="weather">Condição do tempo</th>
+            <th data-i18n="recommended">Recomendado</th>
+          </tr>
+        </thead>
+        <tbody id="decision-body"></tbody>
+      </table>
+
+      <h3 data-i18n="sectionPhases">Fases do Eclipse</h3>
+      <ol id="phases" class="phases" aria-label="Fases do eclipse"></ol>
+      <p class="disclaimer" data-i18n="approxDisclaimer">
+        Valores aproximados — confirmar com fontes oficiais perto da data.
+      </p>
+    </section>
+
+    <!-- ============== O QUE ESPERAR ============== -->
+    <section id="section-expectations" aria-labelledby="h-expectations">
+      <h2 id="h-expectations" data-i18n="sectionExpectations">O que Esperar</h2>
+      <div id="expectations-grid" class="cards-grid"></div>
+    </section>
+
+    <!-- ============== CHECKLIST ============== -->
+    <section id="section-checklist" aria-labelledby="h-checklist">
+      <h2 id="h-checklist" data-i18n="sectionChecklist">Checklist</h2>
+      <ul id="checklist" class="checklist"></ul>
+      <div class="actions">
+        <button type="button" id="btn-reset" class="btn btn-secondary" data-i18n="resetChecklist">
+          Reset checklist
+        </button>
+        <button type="button" id="btn-print" class="btn btn-primary" data-i18n="printPdf">
+          Imprimir / Guardar PDF
+        </button>
+      </div>
+    </section>
+
+    <!-- ============== NOTAS ============== -->
+    <section id="section-notes" aria-labelledby="h-notes">
+      <h2 id="h-notes" data-i18n="sectionNotes">Notas Importantes</h2>
+      <ul id="notes-list" class="notes"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="container" data-i18n="footer">
+      Dados editáveis em data.js. App estática — funciona offline depois de carregada.
+    </p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Leaflet JS opcional -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""
+          onerror="window.__leafletFailed = true;"></script>
+
+  <script>
+/*
+ * data.js
+ *
+ * Conteúdo editável da aplicação (spots, hotéis, plano do dia,
+ * checklist, matriz de decisão, notas e traduções).
+ *
+ * Para alterar/acrescentar conteúdo basta editar este ficheiro.
+ * Todos os textos principais estão em PT (com fallback EN simples).
+ */
+
+window.APP_DATA = {
+
+  // ---------- Momento da totalidade ----------
+  // Hora UTC do meio da totalidade na região de León (aprox.).
+  // 12/08/2026 ~20:30 CEST = 18:30 UTC.
+  eclipse: {
+    totalityMidUTC: "2026-08-12T18:30:00Z",
+    totalityStartUTC: "2026-08-12T18:29:00Z",
+    totalityEndUTC:   "2026-08-12T18:31:30Z",
+    sunsetLocal: "21:21",
+    note: "Horas aproximadas para a região de León. Pequenas variações (segundos a 1 min) entre spots."
+  },
+
+  // ---------- Fases do eclipse (hora local CEST, aproximadas) ----------
+  phases: [
+    {
+      code: "C1",
+      time: "≈ 19:30",
+      title: "Início do parcial",
+      detail: "Primeiro contacto — a Lua começa a tapar o Sol. Sol ainda relativamente alto. Óculos de eclipse já postos."
+    },
+    {
+      code: "C2",
+      time: "≈ 20:29",
+      title: "Início da totalidade",
+      detail: "Segundos antes: grãos de Baily e diamond ring. A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos."
+    },
+    {
+      code: "Max",
+      time: "≈ 20:30",
+      title: "Máximo / meio da totalidade",
+      detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol."
+    },
+    {
+      code: "C3",
+      time: "≈ 20:31",
+      title: "Fim da totalidade",
+      detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos."
+    },
+    {
+      code: "Pôr",
+      time: "≈ 21:21",
+      title: "Pôr-do-Sol em León",
+      detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui."
+    },
+    {
+      code: "C4",
+      time: "— (após o pôr-do-Sol)",
+      title: "Fim teórico do parcial",
+      detail: "O quarto contacto ocorre quando o Sol já não está visível em León. Sem interesse prático."
+    }
+  ],
+
+  // ---------- Spots de observação ----------
+  // Coordenadas aproximadas (úteis apenas para o mapa, opcional).
+  // sun.altitude/azimuth em graus, calculados para 18:30 UTC do dia 12/08/2026.
+  // totalityDurationSec é uma estimativa baseada na distância à linha central.
+  spots: [
+    {
+      id: "candamia",
+      name: "La Candamia / Puente Castro",
+      type: "plano",                 // plano | elevado | montanha
+      distance: "near",              // near | medium | long
+      distanceLabel: "Próximo (10–15 min de León)",
+      coords: [42.5708, -5.5547],
+      why: "Campos abertos a sul de León com horizonte oeste relativamente desimpedido. Acesso fácil, perto da cidade, boa logística para chegar cedo e sair depressa.",
+      alerts: [
+        "Confirmar horizonte W/NW livre antes da totalidade",
+        "Estacionamento pode encher — chegar cedo",
+      ],
+      howToFind: "La Candamia León",
+      tags: ["seguro", "logistica"],
+      facility: 5,
+      experience: 3,
+      sun: { altitude: 7.4, azimuth: 283 },
+      totalityDurationSec: 90,
+      totalityLabel: "≈ 1m 30s"
+    },
+    {
+      id: "portillo",
+      name: "Alto del Portillo / Valdefresno",
+      type: "elevado",
+      distance: "medium",
+      distanceLabel: "Médio (30–45 min de León)",
+      coords: [42.5300, -5.5300],
+      why: "Colinas ligeiramente elevadas a sul de León. Vista mais ampla, menos obstáculos urbanos, bom compromisso entre proximidade e horizonte limpo.",
+      alerts: [
+        "Estradas secundárias — atenção ao trânsito de regresso",
+        "Pouca sombra: levar chapéu / protetor solar para a espera",
+      ],
+      howToFind: "Alto del Portillo Valdefresno León",
+      tags: ["seguro", "fotogenico"],
+      facility: 4,
+      experience: 4,
+      sun: { altitude: 7.4, azimuth: 283 },
+      totalityDurationSec: 85,
+      totalityLabel: "≈ 1m 25s"
+    },
+    {
+      id: "paramo",
+      name: "Páramo Leonés (Santa María del Páramo / Valencia de Don Juan)",
+      type: "plano",
+      distance: "medium",
+      distanceLabel: "Médio (30–45 min de León)",
+      coords: [42.3622, -5.7592],
+      why: "Planícies amplas com horizonte 360° muito limpo. Ideal se houver risco de nuvens isoladas — fácil deslocar-se em estradas paralelas para um buraco no céu.",
+      alerts: [
+        "Pouca infraestrutura — levar tudo de casa",
+        "Verão pode estar muito quente até ao pôr do Sol",
+        "Mais a sul da linha central — totalidade um pouco mais curta",
+      ],
+      howToFind: "Santa María del Páramo, León",
+      tags: ["seguro", "flexivel"],
+      facility: 4,
+      experience: 4,
+      sun: { altitude: 7.5, azimuth: 283 },
+      totalityDurationSec: 70,
+      totalityLabel: "≈ 1m 10s"
+    },
+    {
+      id: "babia",
+      name: "Babia / San Emiliano",
+      type: "montanha",
+      distance: "long",
+      distanceLabel: "Longo (1h–1h20 de León)",
+      coords: [42.9508, -6.0072],
+      why: "Plateau de montanha com cenário dramático e mais próximo da linha central — totalidade mais longa. Opção 'wow' para fotografia paisagística.",
+      alerts: [
+        "Tempo em montanha pode mudar depressa — risco de nuvens",
+        "Estrada de regresso à noite pode ser longa",
+        "Confirmar horizonte W/NW sem montanhas a tapar",
+      ],
+      howToFind: "San Emiliano Babia León",
+      tags: ["fotogenico", "wow"],
+      facility: 2,
+      experience: 5,
+      sun: { altitude: 7.8, azimuth: 283 },
+      totalityDurationSec: 100,
+      totalityLabel: "≈ 1m 40s"
+    }
+  ],
+
+  // ---------- Hotéis em León ----------
+  hotels: [
+    {
+      name: "Barceló León Conde Luna",
+      notes: ["Central", "Fácil acesso de carro", "Bom para família", "Boa saída para sul"]
+    },
+    {
+      name: "NH Collection León Plaza Mayor",
+      notes: ["Central", "Junto ao centro histórico", "Bom para família"]
+    },
+    {
+      name: "Silken Luis de León",
+      notes: ["Boa saída para sul", "Estacionamento útil", "Tranquilo"]
+    },
+    {
+      name: "AC Hotel León San Antonio",
+      notes: ["Fácil acesso de carro", "Boa ligação a vias rápidas", "Bom para família"]
+    }
+  ],
+
+  // ---------- Plano do dia (Eclipse Day) ----------
+  // Blocos da timeline. Hora apenas indicativa.
+  timeline: [
+    {
+      time: "16:00 – 17:00",
+      title: "Decisão com base no tempo",
+      detail: "Última verificação de previsão (cloud check). Escolher Spot Principal vs Backup. Confirmar com o grupo."
+    },
+    {
+      time: "17:30 – 18:30",
+      title: "Saída / viagem",
+      detail: "Sair de León para o spot escolhido. Margem para trânsito, paragens e estacionamento."
+    },
+    {
+      time: "19:30",
+      title: "Chegar e montar",
+      detail: "Instalar tapete/cadeiras, identificar horizonte W/NW, preparar óculos de eclipse, ajustar binóculos com filtro adequado."
+    },
+    {
+      time: "20:27 – 20:33",
+      title: "Janela de totalidade (aprox.)",
+      detail: "Totalidade dura poucos minutos. Durante a totalidade pode-se olhar sem filtros — fora dela, NUNCA olhar para o Sol sem proteção adequada."
+    },
+    {
+      time: "20:30 – 21:00",
+      title: "Ficar mais 20–30 min",
+      detail: "Evitar a saída em massa logo após a totalidade. Aproveitar para hidratar, arrumar com calma e deixar o trânsito escoar."
+    }
+  ],
+
+  // ---------- Matriz de decisão ----------
+  // weather -> id do spot recomendado
+  decisionMatrix: {
+    clear:    { spotId: "candamia", reason: "Céu limpo — não precisa de altitude extra. La Candamia oferece proximidade e logística simples." },
+    haze:     { spotId: "portillo", reason: "Com haze/horizonte sujo, ganhar altitude ajuda. Alto del Portillo dá vista mais limpa." },
+    clouds:   { spotId: "paramo",   reason: "Risco de nuvens isoladas — planícies do Páramo permitem ajustar a posição rapidamente." },
+    mountain: { spotId: "babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." }
+  },
+
+  weatherOptions: [
+    { value: "clear",    label: "Céu limpo" },
+    { value: "haze",     label: "Algum haze / horizonte sujo" },
+    { value: "clouds",   label: "Risco de nuvens isoladas" },
+    { value: "mountain", label: "Estável e quer foco em fotos" }
+  ],
+
+  // ---------- Checklist ----------
+  checklist: [
+    { id: "glasses",   label: "Óculos de eclipse certificados (ISO 12312-2)" },
+    { id: "water",     label: "Água e snacks" },
+    { id: "seating",   label: "Tapete / cadeiras" },
+    { id: "powerbank", label: "Powerbank carregado" },
+    { id: "jacket",    label: "Casacos leves (arrefece à noite)" },
+    { id: "binos",     label: "Binóculos — APENAS com filtro solar adequado (nunca sem)" },
+    { id: "sun",       label: "Protetor solar e chapéu" }
+  ],
+
+  // ---------- "O que esperar" ----------
+  expectations: [
+    {
+      title: "Diamond ring (anel de diamante)",
+      detail: "Segundos antes e depois da totalidade, um único ponto brilhante de luz solar atravessa o limbo lunar, criando um efeito de anel com diamante. Dura apenas 1–2 segundos de cada lado."
+    },
+    {
+      title: "Grãos de Baily",
+      detail: "Pontos de luz que atravessam os vales lunares mesmo antes e depois da totalidade. Olhar a olho nu APENAS no segundo exato em que aparecem, e voltar a pôr óculos."
+    },
+    {
+      title: "Coroa solar",
+      detail: "A atmosfera exterior do Sol — um halo branco-prateado em redor da Lua negra. Só é visível durante a totalidade. É o motivo principal de viajar para ver uma totalidade."
+    },
+    {
+      title: "Bandas de sombra",
+      detail: "Linhas finas claras/escuras a correr pelo chão e em paredes brancas, ~1 minuto antes e depois da totalidade. Olhar para o chão, não para o Sol. Fenómeno subtil — levar uma cartolina branca ajuda."
+    },
+    {
+      title: "Queda de temperatura",
+      detail: "Pode descer 3–6 °C nos minutos antes da totalidade. Os miúdos vão sentir. Casaco leve à mão é mesmo necessário."
+    },
+    {
+      title: "Crepúsculo 360°",
+      detail: "Durante a totalidade, o horizonte fica laranja/avermelhado em todas as direções, como um pôr-do-Sol circular. Olhar à volta — não só para o Sol."
+    },
+    {
+      title: "Planetas e estrelas visíveis",
+      detail: "Vénus aparece à esquerda do Sol, Mercúrio mais perto e à direita. Em céus muito limpos, podem aparecer estrelas brilhantes. Para esta totalidade, o Sol está muito baixo — o efeito é dramático."
+    },
+    {
+      title: "Reação dos animais",
+      detail: "Pássaros podem ir para os ninhos, grilos começam a cantar, o gado pára. Se houver animais por perto, é bonito notar."
+    }
+  ],
+
+  // ---------- Meteorologia (Open-Meteo) ----------
+  // Open-Meteo é gratuito e não precisa de chave. Janela de previsão: 16 dias.
+  meteo: {
+    endpoint: "https://api.open-meteo.com/v1/forecast",
+    forecastHorizonDays: 16,
+    eclipseDateLocal: "2026-08-12",
+    eclipseHourLocal: 20,                // 20:00 CEST (hora da totalidade)
+    timezone: "Europe/Madrid",
+    hourlyVars: [
+      "cloud_cover",
+      "cloud_cover_low",
+      "cloud_cover_mid",
+      "cloud_cover_high",
+      "temperature_2m",
+      "wind_speed_10m",
+      "precipitation_probability",
+      "visibility"
+    ]
+  },
+
+  // ---------- Notas importantes ----------
+  notes: [
+    "Precisas de horizonte W/NW desimpedido — o Sol estará baixo no horizonte.",
+    "Chegar cedo por causa do trânsito e estacionamento.",
+    "Totalidade só dentro da faixa central; fora dela é eclipse parcial.",
+    "Nunca olhar para o Sol sem proteção adequada — exceto durante os poucos minutos de totalidade.",
+    "Confirmar previsão meteorológica nas horas antes; ter sempre um Spot Backup."
+  ],
+
+  // ---------- Traduções (PT por defeito, EN parcial) ----------
+  i18n: {
+    pt: {
+      appTitle: "Eclipse Solar Total — León 2026",
+      appSubtitle: "12 de Agosto de 2026 · Plano de observação para a família",
+      myBase: "Base",
+      primarySpot: "Spot Principal",
+      backupSpot: "Spot Backup",
+      notSet: "(por definir)",
+      sectionSpots: "Spots de Observação (perto de León)",
+      sectionHotels: "Hotéis em León (base recomendada)",
+      sectionPlan: "Plano do Dia",
+      sectionChecklist: "Checklist",
+      sectionNotes: "Notas Importantes",
+      sectionDecision: "Matriz de Decisão",
+      sectionPhases: "Fases do Eclipse",
+      sectionExpectations: "O que Esperar",
+      countdownLabel: "Até à totalidade",
+      countdownActive: "TOTALIDADE EM CURSO",
+      countdownDone: "Eclipse concluído",
+      days: "d",
+      hours: "h",
+      minutes: "m",
+      seconds: "s",
+      sunAtTotality: "Posição do Sol",
+      altitude: "Altitude",
+      azimuth: "Azimute",
+      totalityDuration: "Totalidade",
+      approxDisclaimer: "Valores aproximados — confirmar com fontes oficiais perto da data.",
+      sectionWeather: "Meteorologia (Open-Meteo)",
+      refreshForecast: "Atualizar previsão",
+      lastUpdated: "Última atualização",
+      never: "nunca",
+      weatherLoading: "A obter previsão…",
+      weatherOutOfRange: "Previsão completa disponível só nos 16 dias antes do eclipse.",
+      weatherDaysAway: "Faltam {n} dias para o eclipse.",
+      weatherTryAgain: "Tenta de novo perto da data.",
+      weatherError: "Falha ao obter previsão. Verifica a ligação à internet.",
+      weatherSuggestion: "Sugestão automática",
+      applySuggestion: "Aplicar à matriz",
+      forecastFor: "Previsão para",
+      cloudTotal: "Nuvens (total)",
+      cloudLow: "Nuvens baixas",
+      cloudMid: "Nuvens médias",
+      cloudHigh: "Nuvens altas",
+      temperature: "Temperatura",
+      wind: "Vento",
+      precipitation: "Prob. precipitação",
+      visibility: "Visibilidade",
+      statusExcellent: "Excelente",
+      statusGood: "Bom",
+      statusMarginal: "Marginal",
+      statusPoor: "Mau",
+      filters: "Filtros",
+      filterDistance: "Distância",
+      filterType: "Tipo",
+      filterPriority: "Prioridade",
+      sortBy: "Ordenar por",
+      sortFacility: "Facilidade / Logística",
+      sortExperience: "Experiência",
+      all: "Todos",
+      near: "Próximo",
+      medium: "Médio",
+      long: "Longo",
+      typeFlat: "Plano",
+      typeHigh: "Elevado",
+      typeMountain: "Montanha",
+      safer: "Mais Seguro",
+      photogenic: "Mais Fotogénico",
+      whyGood: "Porquê é bom",
+      alerts: "Alertas",
+      howToFind: "Como encontrar",
+      copySearch: "Copiar pesquisa",
+      setPrimary: "Definir como Spot Principal",
+      setBackup: "Definir como Spot Backup",
+      copyHotel: "Copiar nome do hotel",
+      hotelDisclaimer: "Confirmar disponibilidade e estacionamento no momento da reserva.",
+      weather: "Condição do tempo",
+      recommended: "Recomendado",
+      resetChecklist: "Reset checklist",
+      printPdf: "Imprimir / Guardar PDF",
+      copied: "Copiado!",
+      languageLabel: "Idioma",
+      mapFallback: "Mapa indisponível — usa a lista de spots abaixo.",
+      base: "León",
+      footer: "Dados editáveis em data.js. App estática — funciona offline depois de carregada."
+    },
+    en: {
+      appTitle: "Total Solar Eclipse — León 2026",
+      appSubtitle: "August 12, 2026 · Family viewing plan",
+      myBase: "Base",
+      primarySpot: "Primary Spot",
+      backupSpot: "Backup Spot",
+      notSet: "(not set)",
+      sectionSpots: "Viewing Spots (near León)",
+      sectionHotels: "Hotels in León (recommended base)",
+      sectionPlan: "Day Plan",
+      sectionChecklist: "Checklist",
+      sectionNotes: "Important Notes",
+      sectionDecision: "Decision Matrix",
+      sectionPhases: "Eclipse Phases",
+      sectionExpectations: "What to Expect",
+      countdownLabel: "Until totality",
+      countdownActive: "TOTALITY IN PROGRESS",
+      countdownDone: "Eclipse finished",
+      days: "d",
+      hours: "h",
+      minutes: "m",
+      seconds: "s",
+      sunAtTotality: "Sun position",
+      altitude: "Altitude",
+      azimuth: "Azimuth",
+      totalityDuration: "Totality",
+      approxDisclaimer: "Approximate values — verify with official sources near the date.",
+      sectionWeather: "Weather (Open-Meteo)",
+      refreshForecast: "Refresh forecast",
+      lastUpdated: "Last updated",
+      never: "never",
+      weatherLoading: "Fetching forecast…",
+      weatherOutOfRange: "Full forecast only available within 16 days of the eclipse.",
+      weatherDaysAway: "{n} days until the eclipse.",
+      weatherTryAgain: "Try again closer to the date.",
+      weatherError: "Failed to fetch forecast. Check your internet connection.",
+      weatherSuggestion: "Auto suggestion",
+      applySuggestion: "Apply to matrix",
+      forecastFor: "Forecast for",
+      cloudTotal: "Cloud cover (total)",
+      cloudLow: "Low clouds",
+      cloudMid: "Mid clouds",
+      cloudHigh: "High clouds",
+      temperature: "Temperature",
+      wind: "Wind",
+      precipitation: "Precip. probability",
+      visibility: "Visibility",
+      statusExcellent: "Excellent",
+      statusGood: "Good",
+      statusMarginal: "Marginal",
+      statusPoor: "Poor",
+      filters: "Filters",
+      filterDistance: "Distance",
+      filterType: "Type",
+      filterPriority: "Priority",
+      sortBy: "Sort by",
+      sortFacility: "Ease / Logistics",
+      sortExperience: "Experience",
+      all: "All",
+      near: "Near",
+      medium: "Medium",
+      long: "Long",
+      typeFlat: "Flat",
+      typeHigh: "Elevated",
+      typeMountain: "Mountain",
+      safer: "Safer",
+      photogenic: "More Photogenic",
+      whyGood: "Why it's good",
+      alerts: "Alerts",
+      howToFind: "How to find",
+      copySearch: "Copy search",
+      setPrimary: "Set as Primary Spot",
+      setBackup: "Set as Backup Spot",
+      copyHotel: "Copy hotel name",
+      hotelDisclaimer: "Confirm availability and parking when booking.",
+      weather: "Weather condition",
+      recommended: "Recommended",
+      resetChecklist: "Reset checklist",
+      printPdf: "Print / Save PDF",
+      copied: "Copied!",
+      languageLabel: "Language",
+      mapFallback: "Map unavailable — use the spot list below.",
+      base: "León",
+      footer: "Editable data in data.js. Static app — works offline after first load."
+    }
+  }
+};
+
+  </script>
+  <script>
+/*
+ * app.js
+ *
+ * Lógica da app Eclipse 2026 — León.
+ * - Renderiza spots, hotéis, plano do dia, checklist e notas.
+ * - Filtra / ordena spots.
+ * - Guarda spot principal/backup e estado da checklist em LocalStorage.
+ * - Suporta troca de idioma PT/EN.
+ * - Tenta inicializar Leaflet; cai para texto se falhar.
+ */
+
+(function () {
+  "use strict";
+
+  // -----------------------------------------------------------
+  // Estado / persistência
+  // -----------------------------------------------------------
+  const STORAGE_KEYS = {
+    primary:   "eclipse2026.primarySpot",
+    backup:    "eclipse2026.backupSpot",
+    checklist: "eclipse2026.checklist",
+    lang:      "eclipse2026.lang",
+    meteo:     "eclipse2026.meteoCache"
+  };
+
+  // Safe localStorage wrappers — alguns contextos (file://, modo privado)
+  // bloqueiam o acesso. Falhar silenciosamente em vez de partir a app.
+  const safeStorage = {
+    get(key) {
+      try { return window.localStorage.getItem(key); }
+      catch (e) { return null; }
+    },
+    set(key, value) {
+      try { window.localStorage.setItem(key, value); }
+      catch (e) { /* ignore */ }
+    },
+    remove(key) {
+      try { window.localStorage.removeItem(key); }
+      catch (e) { /* ignore */ }
+    }
+  };
+
+  const state = {
+    lang: safeStorage.get(STORAGE_KEYS.lang) || "pt",
+    primarySpotId: safeStorage.get(STORAGE_KEYS.primary) || null,
+    backupSpotId:  safeStorage.get(STORAGE_KEYS.backup)  || null,
+    filters: { distance: "all", type: "all", priority: "all" },
+    sortBy: "facility",
+    weather: "clear",
+    meteoCache: null     // in-memory mirror of forecast cache
+  };
+
+  // Atalhos
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const t = (key) => {
+    const dict = (window.APP_DATA.i18n[state.lang]) || window.APP_DATA.i18n.pt;
+    return dict[key] || key;
+  };
+
+  // -----------------------------------------------------------
+  // Inicialização
+  // -----------------------------------------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    if (!window.APP_DATA) {
+      console.error("APP_DATA not found. Verifica data.js.");
+      return;
+    }
+
+    // Idioma inicial
+    $("#lang-select").value = state.lang;
+    document.documentElement.lang = state.lang === "pt" ? "pt-PT" : "en";
+
+    applyTranslations();
+    renderWeatherOptions();
+    renderTimeline();
+    renderPhases();
+    renderDecisionTable();
+    renderHotels();
+    renderChecklist();
+    renderExpectations();
+    renderNotes();
+    renderSpots();
+    updateSummary();
+    initMap();
+    startCountdown();
+    renderMeteo();          // load from cache if available
+    renderMeteoDisclaimer();
+
+    bindEvents();
+  });
+
+  // -----------------------------------------------------------
+  // Tradução estática (elementos com data-i18n)
+  // -----------------------------------------------------------
+  function applyTranslations() {
+    $$("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n");
+      const txt = t(key);
+      if (txt) el.textContent = txt;
+    });
+    // Recolocar valores "Spot não definido" no resumo se necessário
+    updateSummary();
+  }
+
+  // -----------------------------------------------------------
+  // Eventos
+  // -----------------------------------------------------------
+  function bindEvents() {
+    // Idioma
+    $("#lang-select").addEventListener("change", (e) => {
+      state.lang = e.target.value;
+      safeStorage.set(STORAGE_KEYS.lang, state.lang);
+      document.documentElement.lang = state.lang === "pt" ? "pt-PT" : "en";
+      applyTranslations();
+      // Re-render para etiquetas dinâmicas dos cards/timeline
+      renderTimeline();
+      renderPhases();
+      renderDecisionTable();
+      renderWeatherOptions();
+      renderSpots();
+      renderHotels();
+      renderChecklist();
+      renderExpectations();
+      renderNotes();
+      updateWeatherRecommendation();
+      updateCountdown();
+      renderMeteo();
+      renderMeteoDisclaimer();
+    });
+
+    // Filtros
+    $$('input[name="f-distance"]').forEach((r) =>
+      r.addEventListener("change", (e) => { state.filters.distance = e.target.value; renderSpots(); })
+    );
+    $$('input[name="f-type"]').forEach((r) =>
+      r.addEventListener("change", (e) => { state.filters.type = e.target.value; renderSpots(); })
+    );
+    $$('input[name="f-priority"]').forEach((r) =>
+      r.addEventListener("change", (e) => { state.filters.priority = e.target.value; renderSpots(); })
+    );
+
+    // Ordenação
+    $("#sort-select").addEventListener("change", (e) => {
+      state.sortBy = e.target.value;
+      renderSpots();
+    });
+
+    // Tempo / matriz de decisão
+    $("#weather-select").addEventListener("change", (e) => {
+      state.weather = e.target.value;
+      updateWeatherRecommendation();
+      highlightDecisionRow();
+    });
+
+    // Checklist
+    $("#btn-reset").addEventListener("click", resetChecklist);
+    $("#btn-print").addEventListener("click", () => window.print());
+
+    // Meteorologia
+    $("#btn-refresh-meteo").addEventListener("click", refreshMeteo);
+  }
+
+  // -----------------------------------------------------------
+  // Render: Spots
+  // -----------------------------------------------------------
+  function renderSpots() {
+    const grid = $("#spots-grid");
+    grid.innerHTML = "";
+
+    const list = filterAndSortSpots(window.APP_DATA.spots);
+
+    if (list.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "disclaimer";
+      empty.textContent = state.lang === "pt"
+        ? "Nenhum spot corresponde aos filtros."
+        : "No spot matches the filters.";
+      grid.appendChild(empty);
+      return;
+    }
+
+    list.forEach((spot) => grid.appendChild(buildSpotCard(spot)));
+  }
+
+  function filterAndSortSpots(spots) {
+    const { distance, type, priority } = state.filters;
+    let list = spots.filter((s) => {
+      if (distance !== "all" && s.distance !== distance) return false;
+      if (type !== "all" && s.type !== type) return false;
+      if (priority !== "all" && !s.tags.includes(priority)) return false;
+      return true;
+    });
+
+    list.sort((a, b) => {
+      const key = state.sortBy === "experience" ? "experience" : "facility";
+      return (b[key] || 0) - (a[key] || 0);
+    });
+    return list;
+  }
+
+  function buildSpotCard(spot) {
+    const card = document.createElement("article");
+    card.className = "card spot-card";
+    if (spot.id === state.primarySpotId) card.classList.add("is-primary");
+    if (spot.id === state.backupSpotId)  card.classList.add("is-backup");
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "card-header";
+
+    const title = document.createElement("h3");
+    title.className = "card-title";
+    title.textContent = spot.name;
+
+    const badges = document.createElement("div");
+    badges.className = "badges";
+    badges.appendChild(makeBadge(typeLabel(spot.type), "badge-accent"));
+    badges.appendChild(makeBadge(distanceLabel(spot.distance), "badge-primary"));
+    if (spot.totalityLabel) {
+      badges.appendChild(makeBadge(`${t("totalityDuration")} ${spot.totalityLabel}`, "badge-warn"));
+    }
+    if (spot.tags.includes("seguro"))      badges.appendChild(makeBadge(t("safer"), "badge-ok"));
+    if (spot.tags.includes("fotogenico"))  badges.appendChild(makeBadge(t("photogenic"), "badge-primary"));
+    if (spot.id === state.primarySpotId)   badges.appendChild(makeBadge(t("primarySpot"), "badge-primary"));
+    if (spot.id === state.backupSpotId)    badges.appendChild(makeBadge(t("backupSpot"), "badge-accent"));
+
+    header.appendChild(title);
+    header.appendChild(badges);
+
+    // Distância
+    const distRow = document.createElement("p");
+    distRow.className = "card-section";
+    distRow.innerHTML = `<strong>${escape(spot.distanceLabel)}</strong> · ` +
+      `<strong>${t("totalityDuration")}:</strong> ${escape(spot.totalityLabel || "—")}`;
+
+    // Why
+    const why = document.createElement("div");
+    why.className = "card-section";
+    why.innerHTML = `<strong>${t("whyGood")}:</strong> ${escape(spot.why)}`;
+
+    // Sun position diagram
+    const sunBlock = document.createElement("div");
+    sunBlock.className = "card-section";
+    sunBlock.innerHTML = `<strong>${t("sunAtTotality")}:</strong>`;
+    sunBlock.appendChild(buildSunDiagram(spot));
+    const sunCap = document.createElement("p");
+    sunCap.className = "sun-diagram-caption";
+    sunCap.textContent =
+      `${t("altitude")}: ${spot.sun.altitude.toFixed(1)}° · ` +
+      `${t("azimuth")}: ${spot.sun.azimuth}° (W → NW)`;
+    sunBlock.appendChild(sunCap);
+
+    // Alerts
+    const alerts = document.createElement("div");
+    alerts.className = "card-section";
+    const ul = document.createElement("ul");
+    spot.alerts.forEach((a) => {
+      const li = document.createElement("li");
+      li.textContent = a;
+      ul.appendChild(li);
+    });
+    alerts.innerHTML = `<strong>${t("alerts")}:</strong>`;
+    alerts.appendChild(ul);
+
+    // How to find
+    const find = document.createElement("div");
+    find.className = "card-section";
+    find.innerHTML = `<strong>${t("howToFind")}:</strong> <code>${escape(spot.howToFind)}</code>`;
+
+    // Ações
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+
+    const btnCopy = document.createElement("button");
+    btnCopy.type = "button";
+    btnCopy.className = "btn btn-secondary";
+    btnCopy.textContent = t("copySearch");
+    btnCopy.addEventListener("click", () => copyToClipboard(spot.howToFind));
+
+    const btnPrimary = document.createElement("button");
+    btnPrimary.type = "button";
+    btnPrimary.className = "btn btn-primary";
+    btnPrimary.textContent = t("setPrimary");
+    btnPrimary.setAttribute("aria-pressed", spot.id === state.primarySpotId ? "true" : "false");
+    btnPrimary.addEventListener("click", () => setPrimarySpot(spot.id));
+
+    const btnBackup = document.createElement("button");
+    btnBackup.type = "button";
+    btnBackup.className = "btn btn-accent";
+    btnBackup.textContent = t("setBackup");
+    btnBackup.setAttribute("aria-pressed", spot.id === state.backupSpotId ? "true" : "false");
+    btnBackup.addEventListener("click", () => setBackupSpot(spot.id));
+
+    actions.appendChild(btnCopy);
+    actions.appendChild(btnPrimary);
+    actions.appendChild(btnBackup);
+
+    card.appendChild(header);
+    card.appendChild(distRow);
+    card.appendChild(why);
+    card.appendChild(sunBlock);
+    card.appendChild(alerts);
+    card.appendChild(find);
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  function typeLabel(type) {
+    if (type === "plano")    return t("typeFlat");
+    if (type === "elevado")  return t("typeHigh");
+    if (type === "montanha") return t("typeMountain");
+    return type;
+  }
+  function distanceLabel(d) {
+    if (d === "near")   return t("near");
+    if (d === "medium") return t("medium");
+    if (d === "long")   return t("long");
+    return d;
+  }
+
+  function makeBadge(text, cls) {
+    const b = document.createElement("span");
+    b.className = `badge ${cls || ""}`.trim();
+    b.textContent = text;
+    return b;
+  }
+
+  // -----------------------------------------------------------
+  // Spot principal / backup
+  // -----------------------------------------------------------
+  function setPrimarySpot(id) {
+    if (state.primarySpotId === id) {
+      state.primarySpotId = null;
+    } else {
+      state.primarySpotId = id;
+      if (state.backupSpotId === id) state.backupSpotId = null;
+    }
+    persistSpots();
+    renderSpots();
+    updateSummary();
+    updateWeatherRecommendation();
+  }
+
+  function setBackupSpot(id) {
+    if (state.backupSpotId === id) {
+      state.backupSpotId = null;
+    } else {
+      state.backupSpotId = id;
+      if (state.primarySpotId === id) state.primarySpotId = null;
+    }
+    persistSpots();
+    renderSpots();
+    updateSummary();
+  }
+
+  function persistSpots() {
+    if (state.primarySpotId) safeStorage.set(STORAGE_KEYS.primary, state.primarySpotId);
+    else safeStorage.remove(STORAGE_KEYS.primary);
+
+    if (state.backupSpotId) safeStorage.set(STORAGE_KEYS.backup, state.backupSpotId);
+    else safeStorage.remove(STORAGE_KEYS.backup);
+  }
+
+  function updateSummary() {
+    const primary = findSpot(state.primarySpotId);
+    const backup  = findSpot(state.backupSpotId);
+    $("#summary-base").textContent = t("base");
+    $("#summary-primary").textContent = primary ? primary.name : t("notSet");
+    $("#summary-backup").textContent  = backup  ? backup.name  : t("notSet");
+  }
+
+  function findSpot(id) {
+    return window.APP_DATA.spots.find((s) => s.id === id);
+  }
+
+  // -----------------------------------------------------------
+  // Render: Hotéis
+  // -----------------------------------------------------------
+  function renderHotels() {
+    const grid = $("#hotels-grid");
+    grid.innerHTML = "";
+
+    window.APP_DATA.hotels.forEach((h) => {
+      const card = document.createElement("article");
+      card.className = "card hotel-card";
+
+      const title = document.createElement("h3");
+      title.className = "card-title";
+      title.textContent = h.name;
+
+      const notes = document.createElement("div");
+      notes.className = "hotel-notes";
+      h.notes.forEach((n) => notes.appendChild(makeBadge(n)));
+
+      const actions = document.createElement("div");
+      actions.className = "card-actions";
+
+      const btnCopy = document.createElement("button");
+      btnCopy.type = "button";
+      btnCopy.className = "btn btn-secondary";
+      btnCopy.textContent = t("copyHotel");
+      btnCopy.addEventListener("click", () => copyToClipboard(h.name));
+
+      actions.appendChild(btnCopy);
+
+      card.appendChild(title);
+      card.appendChild(notes);
+      card.appendChild(actions);
+      grid.appendChild(card);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Render: Plano do dia (timeline)
+  // -----------------------------------------------------------
+  function renderTimeline() {
+    const ol = $("#timeline");
+    ol.innerHTML = "";
+    window.APP_DATA.timeline.forEach((item) => {
+      const li = document.createElement("li");
+      const isTotality = /totalidade|totality/i.test(item.title);
+      if (isTotality) li.classList.add("is-highlight");
+
+      const time = document.createElement("span");
+      time.className = "timeline-time";
+      time.textContent = item.time;
+
+      const title = document.createElement("span");
+      title.className = "timeline-title";
+      title.textContent = item.title;
+
+      const detail = document.createElement("span");
+      detail.className = "timeline-detail";
+      detail.textContent = item.detail;
+
+      li.appendChild(time);
+      li.appendChild(title);
+      li.appendChild(detail);
+      ol.appendChild(li);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Tempo + matriz de decisão
+  // -----------------------------------------------------------
+  function renderWeatherOptions() {
+    const sel = $("#weather-select");
+    const prev = sel.value;
+    sel.innerHTML = "";
+    window.APP_DATA.weatherOptions.forEach((opt) => {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      sel.appendChild(o);
+    });
+    sel.value = prev || state.weather;
+    state.weather = sel.value;
+    updateWeatherRecommendation();
+  }
+
+  function renderDecisionTable() {
+    const tbody = $("#decision-body");
+    tbody.innerHTML = "";
+    window.APP_DATA.weatherOptions.forEach((opt) => {
+      const tr = document.createElement("tr");
+      tr.dataset.weather = opt.value;
+
+      const tdCond = document.createElement("td");
+      tdCond.textContent = opt.label;
+
+      const tdReco = document.createElement("td");
+      const mapEntry = window.APP_DATA.decisionMatrix[opt.value];
+      const spot = mapEntry ? findSpot(mapEntry.spotId) : null;
+      tdReco.innerHTML = `<strong>${spot ? escape(spot.name) : "—"}</strong>` +
+                         (mapEntry ? `<br><span class="card-section">${escape(mapEntry.reason)}</span>` : "");
+
+      tr.appendChild(tdCond);
+      tr.appendChild(tdReco);
+      tbody.appendChild(tr);
+    });
+    highlightDecisionRow();
+  }
+
+  function highlightDecisionRow() {
+    $$("#decision-body tr").forEach((tr) => {
+      tr.classList.toggle("is-active", tr.dataset.weather === state.weather);
+    });
+  }
+
+  function updateWeatherRecommendation() {
+    const entry = window.APP_DATA.decisionMatrix[state.weather];
+    const reco = $("#weather-reco");
+    if (!entry || !reco) return;
+    const spot = findSpot(entry.spotId);
+    if (!spot) { reco.textContent = ""; return; }
+
+    const recommendedLabel = t("recommended");
+    reco.innerHTML =
+      `<strong>${recommendedLabel}:</strong> ${escape(spot.name)} — ${escape(entry.reason)}`;
+  }
+
+  // -----------------------------------------------------------
+  // Checklist
+  // -----------------------------------------------------------
+  function renderChecklist() {
+    const ul = $("#checklist");
+    ul.innerHTML = "";
+    const saved = readChecklistState();
+
+    window.APP_DATA.checklist.forEach((item) => {
+      const li = document.createElement("li");
+      const lbl = document.createElement("label");
+      lbl.setAttribute("for", `chk-${item.id}`);
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = `chk-${item.id}`;
+      cb.checked = !!saved[item.id];
+      cb.addEventListener("change", () => {
+        saved[item.id] = cb.checked;
+        safeStorage.set(STORAGE_KEYS.checklist, JSON.stringify(saved));
+      });
+
+      const span = document.createElement("span");
+      span.textContent = item.label;
+
+      lbl.appendChild(cb);
+      lbl.appendChild(span);
+      li.appendChild(lbl);
+      ul.appendChild(li);
+    });
+  }
+
+  function readChecklistState() {
+    try {
+      return JSON.parse(safeStorage.get(STORAGE_KEYS.checklist) || "{}");
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function resetChecklist() {
+    safeStorage.remove(STORAGE_KEYS.checklist);
+    renderChecklist();
+    showToast(state.lang === "pt" ? "Checklist limpa." : "Checklist cleared.");
+  }
+
+  // -----------------------------------------------------------
+  // Notas
+  // -----------------------------------------------------------
+  function renderNotes() {
+    const ul = $("#notes-list");
+    ul.innerHTML = "";
+    window.APP_DATA.notes.forEach((n) => {
+      const li = document.createElement("li");
+      li.textContent = n;
+      ul.appendChild(li);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Mapa (Leaflet) com fallback
+  // -----------------------------------------------------------
+  function initMap() {
+    const mapEl = $("#map");
+    const fallback = $("#map-fallback");
+
+    const leafletAvailable = !window.__leafletFailed && typeof window.L !== "undefined";
+    if (!leafletAvailable) {
+      mapEl.classList.add("hidden");
+      fallback.classList.remove("hidden");
+      return;
+    }
+
+    try {
+      const center = [42.5987, -5.5671]; // León
+      const map = L.map(mapEl, { scrollWheelZoom: false }).setView(center, 9);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+        attribution: "© OpenStreetMap"
+      }).addTo(map);
+
+      // Marker León
+      L.marker(center).addTo(map).bindPopup("León (base)");
+
+      // Markers para spots
+      window.APP_DATA.spots.forEach((s) => {
+        if (!s.coords) return;
+        L.marker(s.coords).addTo(map).bindPopup(`<strong>${escape(s.name)}</strong>`);
+      });
+    } catch (err) {
+      console.warn("Map init failed:", err);
+      mapEl.classList.add("hidden");
+      fallback.classList.remove("hidden");
+    }
+  }
+
+  // -----------------------------------------------------------
+  // Sun position diagram (SVG)
+  // -----------------------------------------------------------
+  // Shows the Sun's position above the western horizon at totality.
+  // X axis: azimuth from 240° (SW) to 320° (NW-by-N).
+  // Y axis: altitude from 0° (horizon) to 25°.
+  function buildSunDiagram(spot) {
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const W = 240, H = 120;
+    const HORIZON_Y = 90;
+    const AZ_MIN = 240, AZ_MAX = 320;
+    const ALT_MAX = 25;
+
+    const az = clamp(spot.sun.azimuth, AZ_MIN, AZ_MAX);
+    const alt = clamp(spot.sun.altitude, 0, ALT_MAX);
+    const sunX = ((az - AZ_MIN) / (AZ_MAX - AZ_MIN)) * W;
+    const sunY = HORIZON_Y - (alt / ALT_MAX) * (HORIZON_Y - 10);
+
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("class", "sun-diagram");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label",
+      `${t("sunAtTotality")}: ${t("altitude")} ${spot.sun.altitude}°, ${t("azimuth")} ${spot.sun.azimuth}°`);
+
+    // Gradient sky (defs)
+    const defs = document.createElementNS(SVG_NS, "defs");
+    defs.innerHTML =
+      `<linearGradient id="sky-${spot.id}" x1="0" y1="0" x2="0" y2="1">
+         <stop offset="0%" stop-color="#1e3a5f"/>
+         <stop offset="60%" stop-color="#7a4b8a"/>
+         <stop offset="100%" stop-color="#f59e0b"/>
+       </linearGradient>`;
+    svg.appendChild(defs);
+
+    // Sky
+    const sky = document.createElementNS(SVG_NS, "rect");
+    sky.setAttribute("x", "0"); sky.setAttribute("y", "0");
+    sky.setAttribute("width", W); sky.setAttribute("height", HORIZON_Y);
+    sky.setAttribute("fill", `url(#sky-${spot.id})`);
+    svg.appendChild(sky);
+
+    // Ground
+    const ground = document.createElementNS(SVG_NS, "rect");
+    ground.setAttribute("x", "0"); ground.setAttribute("y", HORIZON_Y);
+    ground.setAttribute("width", W); ground.setAttribute("height", H - HORIZON_Y);
+    ground.setAttribute("fill", "#1f2937");
+    svg.appendChild(ground);
+
+    // Altitude grid (5°, 10°, 15°, 20°)
+    for (let a = 5; a <= 20; a += 5) {
+      const y = HORIZON_Y - (a / ALT_MAX) * (HORIZON_Y - 10);
+      const line = document.createElementNS(SVG_NS, "line");
+      line.setAttribute("x1", "0"); line.setAttribute("x2", W);
+      line.setAttribute("y1", y);   line.setAttribute("y2", y);
+      line.setAttribute("stroke", "rgba(255,255,255,0.12)");
+      line.setAttribute("stroke-dasharray", "3 4");
+      svg.appendChild(line);
+
+      const lbl = document.createElementNS(SVG_NS, "text");
+      lbl.setAttribute("x", "4"); lbl.setAttribute("y", y - 2);
+      lbl.setAttribute("font-size", "8");
+      lbl.setAttribute("fill", "rgba(255,255,255,0.5)");
+      lbl.textContent = `${a}°`;
+      svg.appendChild(lbl);
+    }
+
+    // Horizon line
+    const horizon = document.createElementNS(SVG_NS, "line");
+    horizon.setAttribute("x1", "0"); horizon.setAttribute("x2", W);
+    horizon.setAttribute("y1", HORIZON_Y); horizon.setAttribute("y2", HORIZON_Y);
+    horizon.setAttribute("stroke", "#fff");
+    horizon.setAttribute("stroke-width", "1.5");
+    svg.appendChild(horizon);
+
+    // Compass labels
+    const compass = [
+      { az: 247.5, label: "WSW" },
+      { az: 270,   label: "W"   },
+      { az: 292.5, label: "WNW" },
+      { az: 315,   label: "NW"  }
+    ];
+    compass.forEach((c) => {
+      const x = ((c.az - AZ_MIN) / (AZ_MAX - AZ_MIN)) * W;
+
+      const tick = document.createElementNS(SVG_NS, "line");
+      tick.setAttribute("x1", x); tick.setAttribute("x2", x);
+      tick.setAttribute("y1", HORIZON_Y - 3); tick.setAttribute("y2", HORIZON_Y + 3);
+      tick.setAttribute("stroke", "#fff");
+      svg.appendChild(tick);
+
+      const txt = document.createElementNS(SVG_NS, "text");
+      txt.setAttribute("x", x); txt.setAttribute("y", H - 6);
+      txt.setAttribute("font-size", "10");
+      txt.setAttribute("fill", "#fff");
+      txt.setAttribute("text-anchor", "middle");
+      txt.textContent = c.label;
+      svg.appendChild(txt);
+    });
+
+    // Sun marker (glow + body)
+    const glow = document.createElementNS(SVG_NS, "circle");
+    glow.setAttribute("cx", sunX); glow.setAttribute("cy", sunY);
+    glow.setAttribute("r", "14"); glow.setAttribute("fill", "rgba(245,158,11,0.35)");
+    svg.appendChild(glow);
+
+    const sun = document.createElementNS(SVG_NS, "circle");
+    sun.setAttribute("cx", sunX); sun.setAttribute("cy", sunY);
+    sun.setAttribute("r", "7");
+    sun.setAttribute("fill", "#fbbf24");
+    sun.setAttribute("stroke", "#fff");
+    sun.setAttribute("stroke-width", "1.5");
+    svg.appendChild(sun);
+
+    // Label above sun
+    const lbl = document.createElementNS(SVG_NS, "text");
+    lbl.setAttribute("x", sunX); lbl.setAttribute("y", sunY - 12);
+    lbl.setAttribute("font-size", "10");
+    lbl.setAttribute("font-weight", "600");
+    lbl.setAttribute("fill", "#fff");
+    lbl.setAttribute("text-anchor", "middle");
+    lbl.textContent = `${spot.sun.altitude}° / ${spot.sun.azimuth}°`;
+    svg.appendChild(lbl);
+
+    return svg;
+  }
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  // -----------------------------------------------------------
+  // Phases (C1, C2, Max, C3, sunset, C4)
+  // -----------------------------------------------------------
+  function renderPhases() {
+    const ol = $("#phases");
+    if (!ol) return;
+    ol.innerHTML = "";
+
+    window.APP_DATA.phases.forEach((p) => {
+      const li = document.createElement("li");
+      li.className = "phase-item";
+      if (p.code === "C2" || p.code === "Max" || p.code === "C3") li.classList.add("is-totality");
+      if (p.code === "Pôr" || /sun ?set|pôr/i.test(p.title)) li.classList.add("is-sunset");
+      if (p.code === "C4") li.classList.add("is-skip");
+
+      const code = document.createElement("span");
+      code.className = "phase-code";
+      code.textContent = p.code;
+
+      const body = document.createElement("div");
+      body.className = "phase-body";
+      body.innerHTML =
+        `<span class="phase-time">${escape(p.time)}</span>` +
+        `<span class="phase-title">${escape(p.title)}</span>` +
+        `<span class="phase-detail">${escape(p.detail)}</span>`;
+
+      li.appendChild(code);
+      li.appendChild(body);
+      ol.appendChild(li);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Expectations ("O que esperar")
+  // -----------------------------------------------------------
+  function renderExpectations() {
+    const grid = $("#expectations-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    window.APP_DATA.expectations.forEach((e) => {
+      const card = document.createElement("article");
+      card.className = "card";
+
+      const title = document.createElement("h3");
+      title.className = "card-title";
+      title.textContent = e.title;
+
+      const detail = document.createElement("p");
+      detail.className = "card-section";
+      detail.textContent = e.detail;
+
+      card.appendChild(title);
+      card.appendChild(detail);
+      grid.appendChild(card);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Countdown to totality
+  // -----------------------------------------------------------
+  let countdownTimer = null;
+
+  function startCountdown() {
+    updateCountdown();
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(updateCountdown, 1000);
+  }
+
+  function updateCountdown() {
+    const el = $("#countdown");
+    const val = $("#countdown-value");
+    if (!el || !val || !window.APP_DATA.eclipse) return;
+
+    const startMs = new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+    const endMs   = new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
+    const now = Date.now();
+
+    el.classList.remove("is-active", "is-done");
+
+    if (now < startMs) {
+      val.textContent = formatDelta(startMs - now);
+    } else if (now >= startMs && now <= endMs) {
+      el.classList.add("is-active");
+      const remaining = Math.max(0, Math.ceil((endMs - now) / 1000));
+      val.textContent = `${t("countdownActive")} — ${remaining}${t("seconds")}`;
+    } else {
+      el.classList.add("is-done");
+      val.textContent = t("countdownDone");
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    }
+  }
+
+  function formatDelta(ms) {
+    let s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400); s -= d * 86400;
+    const h = Math.floor(s / 3600);  s -= h * 3600;
+    const m = Math.floor(s / 60);    s -= m * 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d}${t("days")} ${pad(h)}${t("hours")} ${pad(m)}${t("minutes")} ${pad(s)}${t("seconds")}`;
+  }
+
+  // -----------------------------------------------------------
+  // Meteorologia (Open-Meteo)
+  // -----------------------------------------------------------
+  // Cache em localStorage:
+  //   { updatedAt: ISO, spots: { spotId: forecast | { error } } }
+  function readMeteoCache() {
+    if (state.meteoCache) return state.meteoCache;
+    try {
+      const raw = safeStorage.get(STORAGE_KEYS.meteo);
+      if (raw) {
+        state.meteoCache = JSON.parse(raw);
+        return state.meteoCache;
+      }
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  function writeMeteoCache(cache) {
+    state.meteoCache = cache;
+    safeStorage.set(STORAGE_KEYS.meteo, JSON.stringify(cache));
+  }
+
+  function daysUntilEclipse() {
+    const ecl = new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+    return Math.ceil((ecl - Date.now()) / 86400000);
+  }
+
+  function renderMeteoDisclaimer() {
+    const el = $("#meteo-disclaimer");
+    if (!el) return;
+    const days = daysUntilEclipse();
+    if (days > window.APP_DATA.meteo.forecastHorizonDays) {
+      const msg = t("weatherDaysAway").replace("{n}", days);
+      el.textContent = `${t("weatherOutOfRange")} ${msg} ${t("weatherTryAgain")}`;
+    } else if (days < 0) {
+      el.textContent = "";
+    } else {
+      el.textContent = `${t("forecastFor")} ${window.APP_DATA.meteo.eclipseDateLocal}, ${String(window.APP_DATA.meteo.eclipseHourLocal).padStart(2,"0")}:00 (CEST).`;
+    }
+  }
+
+  async function refreshMeteo() {
+    const btn = $("#btn-refresh-meteo");
+    const status = $("#meteo-status");
+
+    btn.disabled = true;
+    btn.dataset.prev = btn.textContent;
+    btn.textContent = t("weatherLoading");
+    status.textContent = "";
+
+    const days = daysUntilEclipse();
+    const outOfRange = days > window.APP_DATA.meteo.forecastHorizonDays;
+
+    try {
+      const results = await Promise.all(
+        window.APP_DATA.spots.map((s) =>
+          fetchSpotForecast(s).then(
+            (data) => ({ id: s.id, data }),
+            (err)  => ({ id: s.id, error: err.message || String(err) })
+          )
+        )
+      );
+
+      const cache = { updatedAt: new Date().toISOString(), spots: {} };
+      results.forEach((r) => { cache.spots[r.id] = r.error ? { error: r.error } : r.data; });
+      writeMeteoCache(cache);
+
+      renderMeteo();
+
+      const allFailed = results.every((r) => r.error);
+      if (allFailed && outOfRange) {
+        status.textContent = t("weatherOutOfRange");
+      } else if (allFailed) {
+        status.textContent = t("weatherError");
+      }
+    } catch (err) {
+      console.warn("Meteo refresh failed:", err);
+      status.textContent = t("weatherError");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.prev || t("refreshForecast");
+    }
+  }
+
+  async function fetchSpotForecast(spot) {
+    const m = window.APP_DATA.meteo;
+    const url = new URL(m.endpoint);
+    url.searchParams.set("latitude",  String(spot.coords[0]));
+    url.searchParams.set("longitude", String(spot.coords[1]));
+    url.searchParams.set("hourly",    m.hourlyVars.join(","));
+    url.searchParams.set("timezone",  m.timezone);
+    url.searchParams.set("start_date", m.eclipseDateLocal);
+    url.searchParams.set("end_date",   m.eclipseDateLocal);
+    url.searchParams.set("windspeed_unit", "kmh");
+
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const body = await res.json();
+        if (body && body.reason) detail = body.reason;
+      } catch (e) { /* ignore */ }
+      throw new Error(detail);
+    }
+    const json = await res.json();
+    return extractEclipseHour(json);
+  }
+
+  function extractEclipseHour(json) {
+    if (!json || !json.hourly || !Array.isArray(json.hourly.time)) {
+      throw new Error("Resposta inesperada do Open-Meteo");
+    }
+    const m = window.APP_DATA.meteo;
+    const target = `${m.eclipseDateLocal}T${String(m.eclipseHourLocal).padStart(2,"0")}:00`;
+    const idx = json.hourly.time.findIndex((t) => t === target);
+    if (idx === -1) {
+      throw new Error("Hora alvo não encontrada na resposta");
+    }
+    const pick = (k) => json.hourly[k] ? json.hourly[k][idx] : null;
+    return {
+      cloud_total: pick("cloud_cover"),
+      cloud_low:   pick("cloud_cover_low"),
+      cloud_mid:   pick("cloud_cover_mid"),
+      cloud_high:  pick("cloud_cover_high"),
+      temp:        pick("temperature_2m"),
+      wind:        pick("wind_speed_10m"),
+      precip:      pick("precipitation_probability"),
+      visibility:  pick("visibility")
+    };
+  }
+
+  // Classify weather data into a status + matrix mapping
+  function classifyWeather(d) {
+    const total = num(d.cloud_total);
+    const low   = num(d.cloud_low);
+    const mid   = num(d.cloud_mid);
+    const high  = num(d.cloud_high);
+    const precip = num(d.precip);
+    const obstructive = low + mid; // low+mid block direct view
+
+    if (precip > 60)
+      return { key: "statusPoor",     mapTo: "clouds", color: "badge-warn" };
+    if (total < 20 && obstructive < 15)
+      return { key: "statusExcellent", mapTo: "clear",  color: "badge-ok" };
+    if (obstructive < 25 && high > 30)
+      return { key: "statusGood",      mapTo: "haze",   color: "badge-primary" };
+    if (total < 40)
+      return { key: "statusGood",      mapTo: "clear",  color: "badge-ok" };
+    if (total < 70)
+      return { key: "statusMarginal",  mapTo: "clouds", color: "badge-primary" };
+    return { key: "statusPoor",        mapTo: "clouds", color: "badge-warn" };
+  }
+
+  function num(v) { return typeof v === "number" ? v : 0; }
+
+  function renderMeteo() {
+    const grid = $("#meteo-grid");
+    const statusEl = $("#meteo-status");
+    const suggestEl = $("#meteo-suggestion");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const cache = readMeteoCache();
+    if (!cache || !cache.spots) {
+      statusEl.textContent = `${t("lastUpdated")}: ${t("never")}`;
+      suggestEl.classList.add("hidden");
+      const empty = document.createElement("p");
+      empty.className = "meteo-empty";
+      empty.textContent = state.lang === "pt"
+        ? "Sem dados ainda. Clica em 'Atualizar previsão'."
+        : "No data yet. Click 'Refresh forecast'.";
+      grid.appendChild(empty);
+      return;
+    }
+
+    statusEl.textContent = `${t("lastUpdated")}: ${formatDateTime(cache.updatedAt)}`;
+
+    const classifiedByCandidates = []; // for auto-suggestion
+
+    window.APP_DATA.spots.forEach((spot) => {
+      const data = cache.spots[spot.id];
+      grid.appendChild(buildMeteoCard(spot, data, classifiedByCandidates));
+    });
+
+    // Auto-suggestion logic:
+    //   - se há Spot Principal definido, usa a classificação desse spot
+    //   - caso contrário, usa a média regional (todos os spots disponíveis)
+    let chosenCls = null;
+    let chosenLabel = "";
+    if (state.primarySpotId) {
+      const c = classifiedByCandidates.find((c) => c.spotId === state.primarySpotId);
+      if (c && c.cls) {
+        chosenCls = c.cls;
+        chosenLabel = state.lang === "pt"
+          ? `com base no Spot Principal (${c.spotName})`
+          : `based on your Primary Spot (${c.spotName})`;
+      }
+    }
+    if (!chosenCls) {
+      const valid = classifiedByCandidates.filter((c) => c.data);
+      if (valid.length > 0) {
+        const avg = {
+          cloud_total: avgOf(valid, "cloud_total"),
+          cloud_low:   avgOf(valid, "cloud_low"),
+          cloud_mid:   avgOf(valid, "cloud_mid"),
+          cloud_high:  avgOf(valid, "cloud_high"),
+          precip:      avgOf(valid, "precip"),
+          wind:        avgOf(valid, "wind")
+        };
+        chosenCls = classifyWeather(avg);
+        chosenLabel = state.lang === "pt"
+          ? `média regional (${valid.length} spots)`
+          : `regional average (${valid.length} spots)`;
+      }
+    }
+
+    if (chosenCls) {
+      suggestEl.classList.remove("hidden");
+      suggestEl.innerHTML = "";
+
+      const text = document.createElement("p");
+      text.className = "meteo-suggestion-text";
+      const matrixLabel = (window.APP_DATA.weatherOptions.find(o => o.value === chosenCls.mapTo) || {}).label || chosenCls.mapTo;
+      text.innerHTML =
+        `<strong>${escape(t("weatherSuggestion"))}:</strong> ${escape(matrixLabel)} ` +
+        `<span class="meteo-suggestion-note">(${escape(t(chosenCls.key))} — ${escape(chosenLabel)})</span>`;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-primary";
+      btn.textContent = t("applySuggestion");
+      btn.addEventListener("click", () => applyAutoSuggestion(chosenCls.mapTo));
+
+      suggestEl.appendChild(text);
+      suggestEl.appendChild(btn);
+    } else {
+      suggestEl.classList.add("hidden");
+    }
+  }
+
+  function avgOf(list, key) {
+    let n = 0, sum = 0;
+    list.forEach((it) => {
+      const v = it.data ? it.data[key] : null;
+      if (typeof v === "number") { sum += v; n++; }
+    });
+    return n > 0 ? sum / n : 0;
+  }
+
+  function buildMeteoCard(spot, data, accum) {
+    const card = document.createElement("article");
+    card.className = "card meteo-card";
+
+    const header = document.createElement("div");
+    header.className = "card-header";
+
+    const title = document.createElement("h3");
+    title.className = "card-title";
+    title.textContent = spot.name;
+    header.appendChild(title);
+
+    const badges = document.createElement("div");
+    badges.className = "badges";
+
+    if (!data || data.error) {
+      badges.appendChild(makeBadge("—", "badge-warn"));
+      header.appendChild(badges);
+      card.appendChild(header);
+
+      const err = document.createElement("p");
+      err.className = "meteo-error";
+      err.textContent = data && data.error ? data.error : t("weatherError");
+      card.appendChild(err);
+
+      accum.push({ spotId: spot.id, spotName: spot.name, cls: null, score: 999, data: null });
+      return card;
+    }
+
+    const cls = classifyWeather(data);
+    badges.appendChild(makeBadge(t(cls.key), cls.color));
+    header.appendChild(badges);
+    card.appendChild(header);
+
+    const summary = document.createElement("p");
+    summary.className = "meteo-summary";
+    summary.textContent =
+      `${t("forecastFor")} ${window.APP_DATA.meteo.eclipseDateLocal}, ` +
+      `${String(window.APP_DATA.meteo.eclipseHourLocal).padStart(2,"0")}:00 (CEST)`;
+    card.appendChild(summary);
+
+    const dl = document.createElement("dl");
+    dl.className = "meteo-stats";
+    appendStat(dl, t("cloudTotal"),     fmtPercent(data.cloud_total));
+    appendStat(dl, t("cloudLow"),       fmtPercent(data.cloud_low));
+    appendStat(dl, t("cloudMid"),       fmtPercent(data.cloud_mid));
+    appendStat(dl, t("cloudHigh"),      fmtPercent(data.cloud_high));
+    appendStat(dl, t("temperature"),    fmtTemp(data.temp));
+    appendStat(dl, t("wind"),           fmtWind(data.wind));
+    appendStat(dl, t("precipitation"),  fmtPercent(data.precip));
+    appendStat(dl, t("visibility"),     fmtVisibility(data.visibility));
+    card.appendChild(dl);
+
+    accum.push({
+      spotId: spot.id,
+      spotName: spot.name,
+      cls: cls,
+      data: data,
+      score: num(data.cloud_low) + num(data.cloud_mid) + 0.5 * num(data.cloud_high)
+    });
+
+    return card;
+  }
+
+  function appendStat(dl, term, value) {
+    const row = document.createElement("div");
+    const dt = document.createElement("dt");
+    const dd = document.createElement("dd");
+    dt.textContent = term;
+    dd.textContent = value;
+    row.appendChild(dt);
+    row.appendChild(dd);
+    dl.appendChild(row);
+  }
+
+  function fmtPercent(v) { return v == null ? "—" : `${Math.round(v)}%`; }
+  function fmtTemp(v)    { return v == null ? "—" : `${Math.round(v)} °C`; }
+  function fmtWind(v)    { return v == null ? "—" : `${Math.round(v)} km/h`; }
+  function fmtVisibility(v) {
+    if (v == null) return "—";
+    if (v >= 1000) return `${Math.round(v / 1000)} km`;
+    return `${Math.round(v)} m`;
+  }
+  function formatDateTime(iso) {
+    try {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch (e) { return iso; }
+  }
+
+  function applyAutoSuggestion(matrixValue) {
+    const sel = $("#weather-select");
+    if (!sel) return;
+    const valid = Array.from(sel.options).some((o) => o.value === matrixValue);
+    if (!valid) return;
+    sel.value = matrixValue;
+    state.weather = matrixValue;
+    updateWeatherRecommendation();
+    highlightDecisionRow();
+    // Scroll to plan section so user sees the effect
+    const plan = $("#section-plan");
+    if (plan && plan.scrollIntoView) plan.scrollIntoView({ behavior: "smooth", block: "start" });
+    showToast(state.lang === "pt" ? "Matriz atualizada." : "Matrix updated.");
+  }
+
+  // -----------------------------------------------------------
+  // Util: clipboard + toast + escape
+  // -----------------------------------------------------------
+  function copyToClipboard(text) {
+    const done = () => showToast(t("copied"));
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done).catch(legacyCopy);
+    } else {
+      legacyCopy();
+    }
+    function legacyCopy() {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = $("#toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("is-visible");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("is-visible"), 1800);
+  }
+
+  function escape(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+})();
+
+  </script>
+</body>
+</html>
