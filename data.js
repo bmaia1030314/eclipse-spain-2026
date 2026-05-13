@@ -22,42 +22,165 @@ window.APP_DATA = {
   },
 
   // ---------- Fases do eclipse (hora local CEST, aproximadas) ----------
+  // tUTC é o timestamp ISO do momento exato (UTC) usado pelos cues de áudio.
+  // Para C4 deixamos null porque ocorre depois do pôr-do-Sol em León.
   phases: [
     {
       code: "C1",
       time: "≈ 19:30",
+      tUTC: "2026-08-12T17:30:00Z",
       title: "Início do parcial",
       detail: "Primeiro contacto — a Lua começa a tapar o Sol. Sol ainda relativamente alto. Óculos de eclipse já postos."
     },
     {
       code: "C2",
       time: "≈ 20:29",
+      tUTC: "2026-08-12T18:29:00Z",
       title: "Início da totalidade",
       detail: "Segundos antes: grãos de Baily e diamond ring. A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos."
     },
     {
       code: "Max",
       time: "≈ 20:30",
+      tUTC: "2026-08-12T18:30:00Z",
       title: "Máximo / meio da totalidade",
       detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol."
     },
     {
       code: "C3",
       time: "≈ 20:31",
+      tUTC: "2026-08-12T18:31:00Z",
       title: "Fim da totalidade",
       detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos."
     },
     {
       code: "Pôr",
       time: "≈ 21:21",
+      tUTC: "2026-08-12T19:21:00Z",
       title: "Pôr-do-Sol em León",
       detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui."
     },
     {
       code: "C4",
       time: "— (após o pôr-do-Sol)",
+      tUTC: null,
       title: "Fim teórico do parcial",
       detail: "O quarto contacto ocorre quando o Sol já não está visível em León. Sem interesse prático."
+    }
+  ],
+
+  // ---------- Cues de áudio (Web Speech API) ----------
+  // Cada cue dispara `offsetSec` segundos antes/depois da fase indicada (refPhase).
+  // catchupSec = janela após o momento em que ainda faz sentido disparar
+  // (se o tab esteve suspenso). staleText* é falado se o cue chegou atrasado.
+  audio: {
+    // Pausa entre cues no preview encadeado (ms)
+    previewPauseMs: 1500,
+    // Vozes preferidas (substring; primeira que match)
+    preferredVoicePt: ["Microsoft Helia", "Microsoft Duarte", "Joana", "Cristiano", "Google português"],
+    preferredVoiceEn: ["Microsoft Aria", "Google UK English Female", "Samantha"],
+    // Margem (ms) depois do último cue até o app-clock parar
+    clockEndMarginMs: 10 * 60 * 1000
+  },
+
+  audioCues: [
+    {
+      id: "pre-eclipse",
+      refPhase: "C1",
+      offsetSec: -300,
+      catchupSec: 240,
+      textPt: "Atenção. O eclipse começa daqui a cinco minutos. Põe os óculos de eclipse já agora.",
+      textEn: "Heads up. The eclipse starts in five minutes. Put your eclipse glasses on now."
+    },
+    {
+      id: "c1",
+      refPhase: "C1",
+      offsetSec: 0,
+      catchupSec: 120,
+      textPt: "Início do parcial. A Lua começou a tapar o Sol. Mantém os óculos.",
+      textEn: "Partial phase begins. The Moon is now covering the Sun. Keep your glasses on."
+    },
+    {
+      id: "midway",
+      refPhase: "C2",
+      offsetSec: -1800,
+      catchupSec: 600,
+      textPt: "Meia hora para a totalidade. Posiciona-te. Liga a câmara. Verifica o horizonte oeste.",
+      textEn: "Thirty minutes to totality. Get into position. Set up your camera. Check the west horizon."
+    },
+    {
+      id: "c2-pre60",
+      refPhase: "C2",
+      offsetSec: -60,
+      catchupSec: 30,
+      textPt: "Sessenta segundos para a totalidade. Mantém os óculos. Atenção aos grãos de Baily.",
+      textEn: "Sixty seconds to totality. Keep glasses on. Watch for Baily's beads."
+    },
+    {
+      id: "c2-pre10",
+      refPhase: "C2",
+      offsetSec: -10,
+      catchupSec: 15,
+      textPt: "Dez segundos. Diamond ring iminente. Ainda não tires os óculos.",
+      textEn: "Ten seconds. Diamond ring imminent. Don't remove glasses yet."
+    },
+    {
+      id: "c2",
+      refPhase: "C2",
+      offsetSec: 0,
+      catchupSec: 60,
+      textPt: "Início aproximado da totalidade. Tira os óculos APENAS se o Sol estiver totalmente coberto.",
+      textEn: "Approximate start of totality. Remove glasses ONLY if the Sun is fully covered."
+    },
+    {
+      id: "c2-confirm",
+      refPhase: "C2",
+      offsetSec: 6,
+      catchupSec: 30,
+      textPt: "Se já vês a coroa solar, podes olhar diretamente. Coroa solar.",
+      textEn: "If you can see the solar corona, you can look directly. Solar corona."
+    },
+    {
+      id: "max",
+      refPhase: "Max",
+      offsetSec: 0,
+      catchupSec: 30,
+      textPt: "Máximo. Olha à volta. Crepúsculo trezentos e sessenta graus. Procura Vénus e Mercúrio.",
+      textEn: "Maximum. Look around. Three sixty degree twilight. Find Venus and Mercury."
+    },
+    {
+      id: "c3-pre30",
+      refPhase: "C3",
+      offsetSec: -30,
+      catchupSec: 20,
+      textPt: "Trinta segundos para o fim da totalidade. Prepara os óculos.",
+      textEn: "Thirty seconds to end of totality. Get glasses ready."
+    },
+    {
+      id: "c3-pre10",
+      refPhase: "C3",
+      offsetSec: -10,
+      catchupSec: 8,
+      textPt: "Dez segundos. Mãos nos óculos.",
+      textEn: "Ten seconds. Hands on glasses."
+    },
+    {
+      id: "c3",
+      refPhase: "C3",
+      offsetSec: 0,
+      catchupSec: 120,
+      textPt: "Fim da totalidade. ÓCULOS NOS OLHOS AGORA. O Sol está a reaparecer.",
+      textEn: "End of totality. GLASSES ON NOW. The Sun is returning.",
+      staleTextPt: "Lembrete de segurança. Se ainda não puseste os óculos, põe imediatamente.",
+      staleTextEn: "Safety reminder. If you haven't put your glasses on, do it now."
+    },
+    {
+      id: "sunset",
+      refPhase: "Pôr",
+      offsetSec: 0,
+      catchupSec: 600,
+      textPt: "Pôr do Sol em León. A observação termina. Espera vinte minutos antes de sair, para evitar trânsito.",
+      textEn: "Sunset in León. Observation ends. Wait twenty minutes before leaving to avoid traffic."
     }
   ],
 
@@ -309,6 +432,25 @@ window.APP_DATA = {
       sectionDecision: "Matriz de Decisão",
       sectionPhases: "Fases do Eclipse",
       sectionExpectations: "O que Esperar",
+      sectionAudio: "Cues de Áudio (Dia do Eclipse)",
+      audioIntro: "Avisos por voz que tocam no momento exato de cada fase. Útil quando estás a olhar para o Sol e não para o ecrã. São auxiliares — não substituem os óculos ISO nem o teu próprio julgamento.",
+      audioActivate: "Ativar cues de áudio",
+      audioDeactivate: "Desativar",
+      audioTest: "Testar voz",
+      audioPreview: "Pré-visualizar todos",
+      audioStop: "Parar",
+      audioStatusInactive: "Inativo — clica em Ativar para começar",
+      audioStatusActive: "Ativo — vai falar no momento de cada fase",
+      audioStatusUnsupported: "Voz não suportada neste browser",
+      audioStatusPreview: "A pré-visualizar…",
+      audioStatusDone: "Eclipse concluído",
+      audioWakeLock: "Manter ecrã ligado (precisa de HTTPS)",
+      audioWakeLockUnsupported: "Wake Lock não suportado neste contexto (usa HTTPS).",
+      audioGestureNotice: "Por exigência dos browsers, tens de ativar uma vez por sessão. Se fechares o separador, é preciso re-ativar.",
+      audioNextCue: "Próximo cue",
+      audioNoMoreCues: "Sem mais cues programados.",
+      audioCuesPlanned: "Ver todos os cues planeados",
+      audioMobileWarning: "No telemóvel: mantém o browser aberto e o ecrã ligado para garantir que os cues tocam. iPhone tem mais limitações que Android.",
       countdownLabel: "Até à totalidade",
       countdownActive: "TOTALIDADE EM CURSO",
       countdownDone: "Eclipse concluído",
@@ -394,6 +536,25 @@ window.APP_DATA = {
       sectionDecision: "Decision Matrix",
       sectionPhases: "Eclipse Phases",
       sectionExpectations: "What to Expect",
+      sectionAudio: "Audio Cues (Eclipse Day)",
+      audioIntro: "Voice alerts that play at the exact moment of each phase. Useful when you're looking at the Sun and not the screen. They're auxiliary — not a substitute for ISO glasses or your own judgement.",
+      audioActivate: "Activate audio cues",
+      audioDeactivate: "Deactivate",
+      audioTest: "Test voice",
+      audioPreview: "Preview all",
+      audioStop: "Stop",
+      audioStatusInactive: "Inactive — click Activate to start",
+      audioStatusActive: "Active — will speak at each phase",
+      audioStatusUnsupported: "Speech not supported in this browser",
+      audioStatusPreview: "Previewing…",
+      audioStatusDone: "Eclipse finished",
+      audioWakeLock: "Keep screen on (requires HTTPS)",
+      audioWakeLockUnsupported: "Wake Lock not supported in this context (use HTTPS).",
+      audioGestureNotice: "Browsers require activation once per session. If you close the tab, you'll need to re-activate.",
+      audioNextCue: "Next cue",
+      audioNoMoreCues: "No more cues scheduled.",
+      audioCuesPlanned: "Show all planned cues",
+      audioMobileWarning: "On mobile: keep browser open and screen on so cues play reliably. iPhone has more limitations than Android.",
       countdownLabel: "Until totality",
       countdownActive: "TOTALITY IN PROGRESS",
       countdownDone: "Eclipse finished",

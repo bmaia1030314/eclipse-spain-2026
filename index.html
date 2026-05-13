@@ -154,6 +154,51 @@
       </p>
     </section>
 
+    <!-- ============== CUES DE ÁUDIO ============== -->
+    <section id="section-audio" aria-labelledby="h-audio">
+      <h2 id="h-audio" data-i18n="sectionAudio">Cues de Áudio (Dia do Eclipse)</h2>
+      <div class="card audio-cues">
+        <p class="audio-intro" data-i18n="audioIntro">
+          Avisos por voz que tocam no momento exato de cada fase. Útil quando estás a olhar para o Sol e não para o ecrã. São auxiliares — não substituem os óculos ISO nem o teu próprio julgamento.
+        </p>
+
+        <div class="audio-status" id="audio-status" role="status" aria-live="polite">
+          <span class="audio-dot" aria-hidden="true"></span>
+          <span class="audio-status-text" id="audio-status-text" data-i18n="audioStatusInactive">Inativo — clica em Ativar para começar</span>
+        </div>
+
+        <div class="audio-controls">
+          <button type="button" id="btn-audio-activate" class="primary" data-i18n="audioActivate">Ativar cues de áudio</button>
+          <button type="button" id="btn-audio-test" data-i18n="audioTest">Testar voz</button>
+          <button type="button" id="btn-audio-preview" data-i18n="audioPreview">Pré-visualizar todos</button>
+          <button type="button" id="btn-audio-stop" hidden data-i18n="audioStop">Parar</button>
+        </div>
+
+        <label class="audio-wakelock">
+          <input type="checkbox" id="chk-wake-lock" />
+          <span data-i18n="audioWakeLock">Manter ecrã ligado (precisa de HTTPS)</span>
+        </label>
+
+        <div class="audio-next" id="audio-next">
+          <span class="audio-next-label" data-i18n="audioNextCue">Próximo cue</span>
+          <strong id="audio-next-time">—</strong>
+          <span id="audio-next-text" class="muted"></span>
+        </div>
+
+        <p class="disclaimer" data-i18n="audioGestureNotice">
+          Por exigência dos browsers, tens de ativar uma vez por sessão. Se fechares o separador, é preciso re-ativar.
+        </p>
+        <p class="disclaimer" data-i18n="audioMobileWarning">
+          No telemóvel: mantém o browser aberto e o ecrã ligado para garantir que os cues tocam. iPhone tem mais limitações que Android.
+        </p>
+
+        <details class="audio-cues-list">
+          <summary data-i18n="audioCuesPlanned">Ver todos os cues planeados</summary>
+          <ul id="audio-cue-list"></ul>
+        </details>
+      </div>
+    </section>
+
     <!-- ============== O QUE ESPERAR ============== -->
     <section id="section-expectations" aria-labelledby="h-expectations">
       <h2 id="h-expectations" data-i18n="sectionExpectations">O que Esperar</h2>

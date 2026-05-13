@@ -752,6 +752,161 @@ h3 {
 
 .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
 
+/* ---------- Audio cues ---------- */
+.audio-cues {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.audio-intro { margin: 0; color: var(--text-muted, #4a5568); }
+.audio-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f4f6f8;
+  border: 1px solid #d8dee5;
+  font-weight: 600;
+}
+.audio-status .audio-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #b0b8c1;
+  box-shadow: 0 0 0 0 rgba(0,0,0,0.0);
+  flex: none;
+}
+.audio-status.is-active {
+  background: #e7f6ec;
+  border-color: #48bb78;
+  color: #1a4730;
+}
+.audio-status.is-active .audio-dot {
+  background: #48bb78;
+  animation: audioPulse 1.6s ease-in-out infinite;
+}
+.audio-status.is-preview {
+  background: #fff7e6;
+  border-color: #d69e2e;
+  color: #6b4a00;
+}
+.audio-status.is-preview .audio-dot { background: #d69e2e; }
+.audio-status.is-unsupported {
+  background: #fdecec;
+  border-color: #e57373;
+  color: #6b1a1a;
+}
+.audio-status.is-unsupported .audio-dot { background: #e57373; }
+
+@keyframes audioPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(72, 187, 120, 0.0); }
+}
+
+.audio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audio-controls button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e0;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.audio-controls button.primary {
+  background: #2b6cb0;
+  border-color: #2b6cb0;
+  color: #fff;
+  font-weight: 600;
+}
+.audio-controls button.primary[disabled] {
+  background: #a0aec0;
+  border-color: #a0aec0;
+}
+.audio-controls button:hover:not([disabled]) {
+  background: #ebf4ff;
+}
+.audio-controls button.primary:hover:not([disabled]) {
+  background: #2c5282;
+}
+
+.audio-wakelock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.audio-wakelock input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #2b6cb0;
+}
+
+.audio-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0f4f8;
+  border-left: 4px solid #2b6cb0;
+  border-radius: 4px;
+}
+.audio-next-label { color: #4a5568; }
+.audio-next strong { font-family: ui-monospace, SFMono-Regular, monospace; }
+.audio-next .muted { font-size: 0.9rem; color: #4a5568; }
+
+.audio-cues-list summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.audio-cues-list ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.audio-cue-item {
+  display: grid;
+  grid-template-columns: 80px 90px 1fr;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #fafbfc;
+  border: 1px solid #edf0f4;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  align-items: baseline;
+}
+.audio-cue-item.is-fired {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.audio-cue-code {
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #2b6cb0;
+}
+.audio-cue-time {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #4a5568;
+}
+@media (max-width: 600px) {
+  .audio-cue-item {
+    grid-template-columns: 70px 1fr;
+  }
+  .audio-cue-time { grid-column: 2; }
+  .audio-cue-text { grid-column: 1 / -1; }
+}
+
 /* ---------- Print ---------- */
 @media print {
   body { background: #fff; color: #000; }
@@ -759,9 +914,12 @@ h3 {
   .topbar h1, .subtitle, .summary-value, .summary-label { color: #000 !important; }
   .countdown { background: #fff; border: 1px solid #999; }
   .countdown-label, .countdown-value { color: #000 !important; }
-  .lang-toggle, .filters, .card-actions, .actions, .weather-row select, .footer, #map, .toast {
+  .lang-toggle, .filters, .card-actions, .actions, .weather-row select, .footer, #map, .toast,
+  .audio-controls, .audio-wakelock, .audio-cues-list summary {
     display: none !important;
   }
+  /* Audio cues: keep cue list expanded on print */
+  .audio-cues-list[open] ul, .audio-cues-list ul { display: flex !important; }
   main section {
     box-shadow: none;
     border: 1px solid #999;

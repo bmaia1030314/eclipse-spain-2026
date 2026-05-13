@@ -48,10 +48,20 @@ node build-bundle.js
 - **Matriz de Decisão** em tabela.
 - **Fases do Eclipse** (C1, C2, Máximo, C3, Pôr-do-Sol, C4) — note-se que C4 ocorre depois do Sol se pôr em León.
 - **"O que Esperar"** — 8 cards explicativos (diamond ring, grãos de Baily, coroa, bandas de sombra, queda de temperatura, crepúsculo 360°, planetas visíveis, reação dos animais).
+- **Cues de Áudio (Web Speech API)** — 12 avisos por voz (PT/EN) que tocam no momento exato de cada fase: -5min de C1, C1, -30min/-60s/-10s/0/+6s de C2, Max, -30s/-10s/0 de C3, Sunset. Para C3 (mais crítico de segurança) há mensagem alternativa "stale" caso o tab tenha estado suspenso. Ativação com um clique ("Ativar cues de áudio") por exigência da política de autoplay dos browsers. Inclui botão **Pré-visualizar todos** para testar antes do dia, **Wake Lock** opcional para manter ecrã ligado (precisa HTTPS), e estado persistente em `sessionStorage` (sobrevive a refresh).
 - **Checklist** persistente em `localStorage`, com botão de reset e de imprimir.
 - **Notas Importantes** com avisos de segurança (óculos ISO, horizonte W/NW, etc.).
 - Toggle de idioma **PT / EN** (PT por defeito).
 - **Robusto a localStorage indisponível** (modo privado, file:// em alguns browsers): a app continua a funcionar, só não persiste escolhas.
+
+### Cues de áudio — limitações importantes
+
+- Tens de **clicar em "Ativar"** uma vez por sessão (política de autoplay; igual a vídeos no YouTube). Se fechares o separador, é preciso re-ativar.
+- O browser tem de **estar aberto e o ecrã ligado** durante o eclipse. Cues NÃO tocam com o telefone bloqueado.
+- O **Wake Lock** (manter ecrã ligado) só funciona em **HTTPS** (Azure Static Web Apps, GitHub Pages, etc.) — não funciona em `file://`.
+- **iPhone Safari** tem mais limitações que Android Chrome (vozes carregam tarde, fala pára após inactividade). Recomenda-se Android.
+- A janela de "catch-up" por cue evita que cues atrasados toquem fora de tempo (ex.: "tira os óculos" 2 min depois). Para C3 há lembrete de segurança alternativo.
+- Os textos dos cues são **conservadores** — timings são aproximados (±30-60s entre spots). Confia nos teus próprios olhos, não só no áudio.
 
 ## Como editar conteúdo
 
@@ -71,7 +81,9 @@ Quase todo o conteúdo está em [`data.js`](./data.js). Edita esse ficheiro para
 
 - **Meteo** (`APP_DATA.meteo`): endpoint, data e hora alvo (`eclipseDateLocal`, `eclipseHourLocal`), timezone, e lista de variáveis horárias a pedir ao Open-Meteo. Para testar a integração antes de a janela de 16 dias abrir, podes alterar temporariamente `eclipseDateLocal` para uma data próxima.
 
-- **Fases** (`APP_DATA.phases`): cada fase tem `code`, `time`, `title`, `detail`.
+- **Fases** (`APP_DATA.phases`): cada fase tem `code`, `time` (texto exibido), `tUTC` (timestamp ISO usado pelos cues de áudio), `title`, `detail`. Põe `tUTC: null` para fases sem cue (ex.: C4).
+
+- **Cues de áudio** (`APP_DATA.audioCues`): array de objetos com `id`, `refPhase` (C1|C2|Max|C3|Pôr), `offsetSec` (negativo = antes da fase), `catchupSec` (janela em segundos para disparar cue atrasado), `textPt`, `textEn`, e opcionais `staleTextPt`/`staleTextEn` (texto alternativo se cue chegou atrasado >3s). Configuração geral em `APP_DATA.audio`: `previewPauseMs`, `preferredVoicePt`/`preferredVoiceEn` (lista de substrings de nomes de voz preferidos), `clockEndMarginMs`.
 
 - **Expectations** (`APP_DATA.expectations`): cada item com `title` e `detail`.
 

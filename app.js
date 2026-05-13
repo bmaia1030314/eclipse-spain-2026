@@ -84,9 +84,9 @@
     renderSpots();
     updateSummary();
     initMap();
-    startCountdown();
     renderMeteo();          // load from cache if available
     renderMeteoDisclaimer();
+    startAppClock();        // ticks countdown + audio cues every 1s
 
     bindEvents();
   });
@@ -128,6 +128,9 @@
       updateCountdown();
       renderMeteo();
       renderMeteoDisclaimer();
+      AudioCue.renderStatus();
+      AudioCue.renderCueList();
+      AudioCue.renderNextCue();
     });
 
     // Filtros
@@ -787,14 +790,35 @@
   }
 
   // -----------------------------------------------------------
-  // Countdown to totality
+  // App clock — relógio único a 1Hz que actualiza o countdown
+  // E processa os cues de áudio. Continua a correr depois de C3
+  // (até passar o último cue + margem) para garantir o cue de sunset.
   // -----------------------------------------------------------
-  let countdownTimer = null;
+  let appClockTimer = null;
 
-  function startCountdown() {
+  function startAppClock() {
+    AudioCue.init();
+    tickAppClock();
+    if (appClockTimer) clearInterval(appClockTimer);
+    appClockTimer = setInterval(tickAppClock, 1000);
+  }
+
+  function tickAppClock() {
     updateCountdown();
-    if (countdownTimer) clearInterval(countdownTimer);
-    countdownTimer = setInterval(updateCountdown, 1000);
+    AudioCue.tick();
+
+    // Parar só quando estamos já depois do último cue + margem.
+    const cues = (window.APP_DATA && window.APP_DATA.audioCues) || [];
+    const audioCfg = (window.APP_DATA && window.APP_DATA.audio) || {};
+    const margin = audioCfg.clockEndMarginMs || (10 * 60 * 1000);
+    let last = 0;
+    for (const c of cues) {
+      const ct = AudioCue.cueTimeMs(c);
+      if (ct != null && ct > last) last = ct;
+    }
+    if (last > 0 && Date.now() > last + margin) {
+      if (appClockTimer) { clearInterval(appClockTimer); appClockTimer = null; }
+    }
   }
 
   function updateCountdown() {
@@ -817,7 +841,8 @@
     } else {
       el.classList.add("is-done");
       val.textContent = t("countdownDone");
-      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      // NOTA: não paramos o appClockTimer aqui — os cues de sunset
+      // ainda têm de tocar. O tickAppClock decide quando parar.
     }
   }
 
@@ -829,6 +854,383 @@
     const pad = (n) => String(n).padStart(2, "0");
     return `${d}${t("days")} ${pad(h)}${t("hours")} ${pad(m)}${t("minutes")} ${pad(s)}${t("seconds")}`;
   }
+
+  // -----------------------------------------------------------
+  // Audio cues (Web Speech API)
+  //
+  // Princípios:
+  // - Tick-based polling (1Hz) através do appClock — evita o limite
+  //   ~24 dias do setTimeout e funciona com cues a 80+ dias de distância.
+  // - Activação por gesto (autoplay policy): utterance silenciosa para
+  //   "primar" o motor de speech. Não persiste entre sessões.
+  // - Catch-up por cue: se o tab esteve suspenso, só dispara cues
+  //   "atrasados" se ainda estiverem dentro da sua janela de catchup.
+  //   Cues críticos (C3) têm staleText alternativo de segurança.
+  // - sessionStorage para conjunto de cues já disparados (sobrevive
+  //   a refresh dentro de uma janela de catchup).
+  // - Visibility/focus → tick imediato para recuperar de suspensão.
+  // -----------------------------------------------------------
+  const AUDIO_FIRED_KEY = "eclipse2026.audioFired";
+
+  const AudioCue = {
+    state: {
+      enabled: false,
+      primed: false,
+      fired: new Set(),
+      previewing: false,
+      previewIndex: 0,
+      previewCancel: false,
+      wakeLockEnabled: false,
+      wakeLock: null
+    },
+
+    isSupported() {
+      return typeof window !== "undefined"
+          && typeof window.speechSynthesis !== "undefined"
+          && typeof window.SpeechSynthesisUtterance === "function";
+    },
+
+    init() {
+      // Restaurar conjunto de cues disparados (sobrevive a refresh).
+      try {
+        const raw = window.sessionStorage && window.sessionStorage.getItem(AUDIO_FIRED_KEY);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) arr.forEach((id) => this.state.fired.add(id));
+        }
+      } catch (e) { /* ignore */ }
+
+      // Em Chrome, getVoices() retorna [] no primeiro call e dispara este evento.
+      if (this.isSupported()) {
+        try {
+          window.speechSynthesis.onvoiceschanged = () => { /* voices ready */ };
+        } catch (e) { /* ignore */ }
+      }
+
+      const btnAct  = $("#btn-audio-activate");
+      const btnTest = $("#btn-audio-test");
+      const btnPrev = $("#btn-audio-preview");
+      const btnStop = $("#btn-audio-stop");
+      const chkWake = $("#chk-wake-lock");
+
+      if (btnAct)  btnAct.addEventListener("click",  () => this.toggleActivate());
+      if (btnTest) btnTest.addEventListener("click", () => this.test());
+      if (btnPrev) btnPrev.addEventListener("click", () => this.startPreview());
+      if (btnStop) btnStop.addEventListener("click", () => this.stopPreview());
+      if (chkWake) chkWake.addEventListener("change", (e) => this.toggleWakeLock(e.target.checked));
+
+      // Recuperar de tab em background quando volta a ficar visível.
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          this.tick();
+          if (this.state.wakeLockEnabled) this.acquireWakeLock();
+        }
+      });
+      window.addEventListener("focus", () => this.tick());
+      window.addEventListener("pageshow", () => this.tick());
+
+      this.renderStatus();
+      this.renderCueList();
+      this.renderNextCue();
+    },
+
+    saveFired() {
+      try {
+        if (window.sessionStorage) {
+          window.sessionStorage.setItem(
+            AUDIO_FIRED_KEY,
+            JSON.stringify(Array.from(this.state.fired))
+          );
+        }
+      } catch (e) { /* ignore */ }
+    },
+
+    toggleActivate() {
+      if (!this.isSupported()) { this.renderStatus(); return; }
+      if (this.state.enabled) this.deactivate();
+      else this.activate();
+    },
+
+    activate() {
+      if (!this.isSupported()) return;
+      // Prime: utterance silenciosa para satisfazer autoplay policy.
+      try {
+        const u = new window.SpeechSynthesisUtterance(" ");
+        u.volume = 0;
+        u.lang = state.lang === "pt" ? "pt-PT" : "en-GB";
+        window.speechSynthesis.speak(u);
+      } catch (e) { /* ignore */ }
+      this.state.enabled = true;
+      this.state.primed = true;
+      this.renderStatus();
+      if (this.state.wakeLockEnabled) this.acquireWakeLock();
+    },
+
+    deactivate() {
+      this.state.enabled = false;
+      try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      this.releaseWakeLock();
+      this.renderStatus();
+    },
+
+    test() {
+      if (!this.isSupported()) return;
+      if (!this.state.primed) this.activate();
+      const txt = state.lang === "pt"
+        ? "Cues de áudio ativos. Tudo pronto para o eclipse."
+        : "Audio cues active. Ready for the eclipse.";
+      this.speakNow(txt);
+    },
+
+    speakNow(text, opts) {
+      if (!this.isSupported()) return;
+      opts = opts || {};
+      try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      try {
+        const u = new window.SpeechSynthesisUtterance(text);
+        u.lang   = opts.lang   || (state.lang === "pt" ? "pt-PT" : "en-GB");
+        u.rate   = opts.rate   != null ? opts.rate   : 1.0;
+        u.pitch  = opts.pitch  != null ? opts.pitch  : 1.0;
+        u.volume = opts.volume != null ? opts.volume : 1.0;
+        const v = this.pickVoice(u.lang);
+        if (v) u.voice = v;
+        if (opts.onend)   u.onend = opts.onend;
+        if (opts.onerror) u.onerror = opts.onerror;
+        window.speechSynthesis.speak(u);
+      } catch (e) { /* ignore */ }
+    },
+
+    pickVoice(lang) {
+      if (!this.isSupported()) return null;
+      let voices = [];
+      try { voices = window.speechSynthesis.getVoices() || []; }
+      catch (e) { return null; }
+      if (!voices.length) return null;
+      const cfg = (window.APP_DATA && window.APP_DATA.audio) || {};
+      const want = state.lang === "pt"
+        ? (cfg.preferredVoicePt || [])
+        : (cfg.preferredVoiceEn || []);
+      for (const sub of want) {
+        const v = voices.find(
+          (vv) => vv.name && vv.name.toLowerCase().includes(sub.toLowerCase())
+        );
+        if (v) return v;
+      }
+      const langPrefix = (lang || "").split("-")[0].toLowerCase();
+      return voices.find(
+        (vv) => vv.lang && vv.lang.toLowerCase().startsWith(langPrefix)
+      ) || null;
+    },
+
+    cueTimeMs(cue) {
+      const phase = (window.APP_DATA && window.APP_DATA.phases || [])
+        .find((p) => p.code === cue.refPhase);
+      if (!phase || !phase.tUTC) return null;
+      return new Date(phase.tUTC).getTime() + (cue.offsetSec || 0) * 1000;
+    },
+
+    cueText(cue, stale) {
+      const isPt = state.lang === "pt";
+      if (stale) {
+        return (isPt ? cue.staleTextPt : cue.staleTextEn) ||
+               (isPt ? cue.textPt : cue.textEn);
+      }
+      return isPt ? cue.textPt : cue.textEn;
+    },
+
+    tick() {
+      // Atualiza UI do "próximo cue" sempre — útil mesmo desativado.
+      this.renderNextCue();
+
+      if (!this.state.enabled || this.state.previewing) return;
+      if (!this.isSupported()) return;
+
+      const now = Date.now();
+      const cues = (window.APP_DATA && window.APP_DATA.audioCues) || [];
+      let firedNow = false;
+      cues.forEach((cue) => {
+        if (this.state.fired.has(cue.id)) return;
+        const ct = this.cueTimeMs(cue);
+        if (ct == null) return;
+        const dt = now - ct;
+        const catchupMs = (cue.catchupSec || 30) * 1000;
+        if (dt >= 0 && dt < catchupMs) {
+          this.state.fired.add(cue.id);
+          firedNow = true;
+          // Se chegámos significativamente atrasados (>3s) e há mensagem
+          // alternativa "stale", usa-a (mais segura, contextualizada).
+          const stale = dt > 3000 && (cue.staleTextPt || cue.staleTextEn);
+          this.speakNow(this.cueText(cue, stale));
+        }
+      });
+      if (firedNow) {
+        this.saveFired();
+        this.renderCueList();
+      }
+    },
+
+    startPreview() {
+      if (!this.isSupported()) return;
+      if (this.state.previewing) return;
+      if (!this.state.primed) this.activate();
+      this.state.previewing = true;
+      this.state.previewCancel = false;
+      this.state.previewIndex = 0;
+      this.renderStatus();
+      this.previewNext();
+    },
+
+    stopPreview() {
+      this.state.previewCancel = true;
+      this.state.previewing = false;
+      try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      this.renderStatus();
+    },
+
+    previewNext() {
+      if (this.state.previewCancel) {
+        this.state.previewing = false;
+        this.renderStatus();
+        return;
+      }
+      const cues = (window.APP_DATA && window.APP_DATA.audioCues) || [];
+      if (this.state.previewIndex >= cues.length) {
+        this.state.previewing = false;
+        this.renderStatus();
+        return;
+      }
+      const cue = cues[this.state.previewIndex++];
+      const text = this.cueText(cue);
+      const cfg = (window.APP_DATA && window.APP_DATA.audio) || {};
+      const pause = cfg.previewPauseMs != null ? cfg.previewPauseMs : 1500;
+
+      // Avanço com onend OU timeout (alguns browsers não disparam onend).
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return;
+        advanced = true;
+        window.setTimeout(() => this.previewNext(), pause);
+      };
+      const estimatedMs = Math.max(2500, text.length * 90);
+      window.setTimeout(advance, estimatedMs + 2000);
+      this.speakNow(text, { onend: advance, onerror: advance });
+    },
+
+    async acquireWakeLock() {
+      if (!("wakeLock" in navigator)) return;
+      if (this.state.wakeLock) return;
+      try {
+        this.state.wakeLock = await navigator.wakeLock.request("screen");
+        if (this.state.wakeLock && this.state.wakeLock.addEventListener) {
+          this.state.wakeLock.addEventListener("release", () => {
+            this.state.wakeLock = null;
+          });
+        }
+      } catch (e) { /* user moved away or insecure context */ }
+    },
+
+    releaseWakeLock() {
+      if (this.state.wakeLock && this.state.wakeLock.release) {
+        try { this.state.wakeLock.release(); } catch (e) { /* ignore */ }
+      }
+      this.state.wakeLock = null;
+    },
+
+    toggleWakeLock(on) {
+      this.state.wakeLockEnabled = !!on;
+      if (on) this.acquireWakeLock();
+      else this.releaseWakeLock();
+    },
+
+    // ----- UI -----
+    renderStatus() {
+      const wrap = $("#audio-status");
+      const txt  = $("#audio-status-text");
+      const btn  = $("#btn-audio-activate");
+      const stop = $("#btn-audio-stop");
+      if (!wrap) return;
+
+      wrap.classList.remove("is-active", "is-preview", "is-unsupported");
+      if (!this.isSupported()) {
+        wrap.classList.add("is-unsupported");
+        if (txt) txt.textContent = t("audioStatusUnsupported");
+        if (btn) { btn.disabled = true; btn.textContent = t("audioActivate"); }
+      } else if (this.state.previewing) {
+        wrap.classList.add("is-preview");
+        if (txt) txt.textContent = t("audioStatusPreview");
+        if (btn) btn.textContent = t("audioActivate");
+      } else if (this.state.enabled) {
+        wrap.classList.add("is-active");
+        if (txt) txt.textContent = t("audioStatusActive");
+        if (btn) { btn.disabled = false; btn.textContent = t("audioDeactivate"); }
+      } else {
+        if (txt) txt.textContent = t("audioStatusInactive");
+        if (btn) { btn.disabled = false; btn.textContent = t("audioActivate"); }
+      }
+      if (stop) stop.hidden = !this.state.previewing;
+    },
+
+    renderNextCue() {
+      const timeEl = $("#audio-next-time");
+      const textEl = $("#audio-next-text");
+      if (!timeEl || !textEl) return;
+      const now = Date.now();
+      const upcoming = ((window.APP_DATA && window.APP_DATA.audioCues) || [])
+        .map((c) => ({ c, t: this.cueTimeMs(c) }))
+        .filter((x) => x.t != null && x.t >= now)
+        .sort((a, b) => a.t - b.t);
+      if (!upcoming.length) {
+        timeEl.textContent = "—";
+        textEl.textContent = t("audioNoMoreCues");
+        return;
+      }
+      const next = upcoming[0];
+      timeEl.textContent = formatDelta(next.t - now);
+      const fullText = this.cueText(next.c) || "";
+      textEl.textContent = fullText.split(".")[0];
+    },
+
+    renderCueList() {
+      const ul = $("#audio-cue-list");
+      if (!ul) return;
+      ul.innerHTML = "";
+      const cues = (window.APP_DATA && window.APP_DATA.audioCues) || [];
+      cues.forEach((cue) => {
+        const ct = this.cueTimeMs(cue);
+        const li = document.createElement("li");
+        li.className = "audio-cue-item";
+        if (this.state.fired.has(cue.id)) li.classList.add("is-fired");
+
+        const code = document.createElement("span");
+        code.className = "audio-cue-code";
+        let label = cue.refPhase;
+        if (cue.offsetSec) {
+          label += (cue.offsetSec > 0 ? "+" : "") + cue.offsetSec + "s";
+        }
+        code.textContent = label;
+
+        const time = document.createElement("span");
+        time.className = "audio-cue-time";
+        if (ct != null) {
+          const d = new Date(ct);
+          time.textContent = d.toLocaleTimeString([], {
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+          });
+        } else {
+          time.textContent = "—";
+        }
+
+        const text = document.createElement("span");
+        text.className = "audio-cue-text";
+        text.textContent = this.cueText(cue) || "";
+
+        li.appendChild(code);
+        li.appendChild(time);
+        li.appendChild(text);
+        ul.appendChild(li);
+      });
+    }
+  };
 
   // -----------------------------------------------------------
   // Meteorologia (Open-Meteo)
