@@ -345,6 +345,7 @@
     renderSpots();
     updateSummary();
     updateWeatherRecommendation();
+    refreshTimingsUI();
   }
 
   function setBackupSpot(id) {
@@ -377,6 +378,44 @@
 
   function findSpot(id) {
     return window.APP_DATA.spots.find((s) => s.id === id);
+  }
+
+  // -----------------------------------------------------------
+  // Spot-adjusted phase times
+  //
+  // Cada fase tem um tUTC genérico (média da região de León). Cada spot
+  // pode ter `phaseOffsets` (segundos) que ajustam o timing relativamente
+  // à referência. Quando o Spot Principal está definido, todos os timings
+  // (countdown, cues de áudio, lista de fases) usam os valores ajustados.
+  // -----------------------------------------------------------
+  function adjustedPhaseTimeMs(code, spotId) {
+    const phase = (window.APP_DATA.phases || []).find((p) => p.code === code);
+    if (!phase || !phase.tUTC) return null;
+    let ms = new Date(phase.tUTC).getTime();
+    const id = spotId !== undefined ? spotId : state.primarySpotId;
+    if (id) {
+      const spot = findSpot(id);
+      const off = spot && spot.phaseOffsets && spot.phaseOffsets[code];
+      if (typeof off === "number") ms += off * 1000;
+    }
+    return ms;
+  }
+
+  function formatLocalHMS(ms) {
+    // Sempre Europe/Madrid (CEST em Agosto = UTC+2) — corresponde ao local do eclipse.
+    return new Date(ms).toLocaleTimeString("pt-PT", {
+      timeZone: "Europe/Madrid",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+    });
+  }
+
+  // Re-renderiza tudo o que depende dos timings ajustados ao spot.
+  // Chamado em setPrimarySpot e mudança de idioma.
+  function refreshTimingsUI() {
+    renderPhases();
+    updateCountdown();
+    AudioCue.renderNextCue();
+    AudioCue.renderCueList();
   }
 
   // -----------------------------------------------------------
@@ -739,6 +778,8 @@
     if (!ol) return;
     ol.innerHTML = "";
 
+    const primary = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+
     window.APP_DATA.phases.forEach((p) => {
       const li = document.createElement("li");
       li.className = "phase-item";
@@ -750,10 +791,18 @@
       code.className = "phase-code";
       code.textContent = p.code;
 
+      // Quando há Spot Principal, mostra tempo absoluto ajustado (HH:MM:SS).
+      // Caso contrário, usa a string genérica original ("≈ 19:30").
+      let timeText = p.time;
+      if (primary && p.tUTC) {
+        const adj = adjustedPhaseTimeMs(p.code, primary.id);
+        if (adj != null) timeText = "≈ " + formatLocalHMS(adj);
+      }
+
       const body = document.createElement("div");
       body.className = "phase-body";
       body.innerHTML =
-        `<span class="phase-time">${escape(p.time)}</span>` +
+        `<span class="phase-time">${escape(timeText)}</span>` +
         `<span class="phase-title">${escape(p.title)}</span>` +
         `<span class="phase-detail">${escape(p.detail)}</span>`;
 
@@ -761,6 +810,25 @@
       li.appendChild(body);
       ol.appendChild(li);
     });
+
+    renderTimingsNotice();
+  }
+
+  // Pequeno aviso por baixo das fases / no painel áudio a indicar
+  // se os timings estão ajustados ao Spot Principal ou são genéricos.
+  function renderTimingsNotice() {
+    const el = $("#timings-notice");
+    if (!el) return;
+    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    if (spot) {
+      el.textContent = t("timingsAdjusted") + ": " + spot.name;
+      el.classList.add("is-adjusted");
+      el.classList.remove("is-generic");
+    } else {
+      el.textContent = t("timingsGeneric");
+      el.classList.add("is-generic");
+      el.classList.remove("is-adjusted");
+    }
   }
 
   // -----------------------------------------------------------
@@ -826,8 +894,14 @@
     const val = $("#countdown-value");
     if (!el || !val || !window.APP_DATA.eclipse) return;
 
-    const startMs = new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
-    const endMs   = new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
+    // Usa timings ajustados ao Spot Principal quando definido,
+    // senão cai nos valores genéricos da região.
+    const c2 = adjustedPhaseTimeMs("C2");
+    const c3 = adjustedPhaseTimeMs("C3");
+    const startMs = c2 != null ? c2
+                                : new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+    const endMs   = c3 != null ? c3
+                                : new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
     const now = Date.now();
 
     el.classList.remove("is-active", "is-done");
@@ -1023,10 +1097,9 @@
     },
 
     cueTimeMs(cue) {
-      const phase = (window.APP_DATA && window.APP_DATA.phases || [])
-        .find((p) => p.code === cue.refPhase);
-      if (!phase || !phase.tUTC) return null;
-      return new Date(phase.tUTC).getTime() + (cue.offsetSec || 0) * 1000;
+      const base = adjustedPhaseTimeMs(cue.refPhase);
+      if (base == null) return null;
+      return base + (cue.offsetSec || 0) * 1000;
     },
 
     cueText(cue, stale) {
@@ -1212,10 +1285,7 @@
         const time = document.createElement("span");
         time.className = "audio-cue-time";
         if (ct != null) {
-          const d = new Date(ct);
-          time.textContent = d.toLocaleTimeString([], {
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-          });
+          time.textContent = formatLocalHMS(ct);
         } else {
           time.textContent = "—";
         }

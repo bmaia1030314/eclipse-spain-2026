@@ -207,7 +207,11 @@ window.APP_DATA = {
       experience: 3,
       sun: { altitude: 7.4, azimuth: 283 },
       totalityDurationSec: 90,
-      totalityLabel: "≈ 1m 30s"
+      totalityLabel: "≈ 1m 30s",
+      // Offsets (segundos) em relação aos timings genéricos de phases[].tUTC.
+      // Candamia é a referência da região de León — todos zero exceto C2/C3
+      // que reflectem a duração da totalidade centrada no Max.
+      phaseOffsets: { C1: 0,   C2: 15,  Max: 0,   C3: -15, "Pôr": 0 }
     },
     {
       id: "portillo",
@@ -227,7 +231,9 @@ window.APP_DATA = {
       experience: 4,
       sun: { altitude: 7.4, azimuth: 283 },
       totalityDurationSec: 85,
-      totalityLabel: "≈ 1m 25s"
+      totalityLabel: "≈ 1m 25s",
+      // Praticamente igual a Candamia; totalidade marginalmente mais curta.
+      phaseOffsets: { C1: 0,   C2: 18,  Max: 0,   C3: -17, "Pôr": 0 }
     },
     {
       id: "paramo",
@@ -248,7 +254,10 @@ window.APP_DATA = {
       experience: 4,
       sun: { altitude: 7.5, azimuth: 283 },
       totalityDurationSec: 70,
-      totalityLabel: "≈ 1m 10s"
+      totalityLabel: "≈ 1m 10s",
+      // ~20 km S e W de León: totalidade mais curta, pôr-do-Sol ligeiramente
+      // mais tarde (longitude mais a W ganha à latitude mais a S).
+      phaseOffsets: { C1: -10, C2: 15,  Max: -10, C3: -35, "Pôr": 20 }
     },
     {
       id: "babia",
@@ -269,7 +278,11 @@ window.APP_DATA = {
       experience: 5,
       sun: { altitude: 7.8, azimuth: 283 },
       totalityDurationSec: 100,
-      totalityLabel: "≈ 1m 40s"
+      totalityLabel: "≈ 1m 40s",
+      // ~40 km NW de León, mais perto da linha central. Umbra desloca-se
+      // E→W, por isso Max ocorre ~35s antes. Pôr-do-Sol ~3min mais tarde
+      // (longitude e latitude favoráveis).
+      phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
     }
   ],
 
@@ -463,6 +476,8 @@ window.APP_DATA = {
       azimuth: "Azimute",
       totalityDuration: "Totalidade",
       approxDisclaimer: "Valores aproximados — confirmar com fontes oficiais perto da data.",
+      timingsAdjusted: "Timings ajustados para",
+      timingsGeneric: "Timings: média regional (define um Spot Principal para ajustar)",
       sectionWeather: "Meteorologia (Open-Meteo)",
       refreshForecast: "Atualizar previsão",
       lastUpdated: "Última atualização",
@@ -567,6 +582,8 @@ window.APP_DATA = {
       azimuth: "Azimuth",
       totalityDuration: "Totality",
       approxDisclaimer: "Approximate values — verify with official sources near the date.",
+      timingsAdjusted: "Timings adjusted for",
+      timingsGeneric: "Timings: regional average (set a Primary Spot to adjust)",
       sectionWeather: "Weather (Open-Meteo)",
       refreshForecast: "Refresh forecast",
       lastUpdated: "Last updated",

@@ -752,6 +752,26 @@ h3 {
 
 .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
 
+/* ---------- Timings adjustment notice ---------- */
+.timings-notice {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  display: inline-block;
+}
+.timings-notice.is-generic {
+  background: #f0f4f8;
+  color: #4a5568;
+  border-left: 3px solid #a0aec0;
+}
+.timings-notice.is-adjusted {
+  background: #e7f6ec;
+  color: #1a4730;
+  border-left: 3px solid #48bb78;
+}
+
 /* ---------- Audio cues ---------- */
 .audio-cues {
   display: flex;

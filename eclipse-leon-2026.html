@@ -3,7 +3,7 @@
   Eclipse Solar Total — León 2026
   Single-file build. Tudo (HTML + CSS + dados + lógica) está aqui.
   Apenas Leaflet é carregado via CDN — se falhar, o resto continua a funcionar.
-  Gerado em: 2026-05-13T18:14:12.504Z
+  Gerado em: 2026-05-13T19:52:31.338Z
 -->
 <html lang="pt-PT">
 <head>
@@ -767,6 +767,26 @@ h3 {
 
 .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
 
+/* ---------- Timings adjustment notice ---------- */
+.timings-notice {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  display: inline-block;
+}
+.timings-notice.is-generic {
+  background: #f0f4f8;
+  color: #4a5568;
+  border-left: 3px solid #a0aec0;
+}
+.timings-notice.is-adjusted {
+  background: #e7f6ec;
+  color: #1a4730;
+  border-left: 3px solid #48bb78;
+}
+
 /* ---------- Audio cues ---------- */
 .audio-cues {
   display: flex;
@@ -1090,6 +1110,9 @@ h3 {
 
       <h3 data-i18n="sectionPhases">Fases do Eclipse</h3>
       <ol id="phases" class="phases" aria-label="Fases do eclipse"></ol>
+      <p id="timings-notice" class="timings-notice is-generic" aria-live="polite">
+        Timings: média regional (define um Spot Principal para ajustar)
+      </p>
       <p class="disclaimer" data-i18n="approxDisclaimer">
         Valores aproximados — confirmar com fontes oficiais perto da data.
       </p>
@@ -1390,7 +1413,11 @@ window.APP_DATA = {
       experience: 3,
       sun: { altitude: 7.4, azimuth: 283 },
       totalityDurationSec: 90,
-      totalityLabel: "≈ 1m 30s"
+      totalityLabel: "≈ 1m 30s",
+      // Offsets (segundos) em relação aos timings genéricos de phases[].tUTC.
+      // Candamia é a referência da região de León — todos zero exceto C2/C3
+      // que reflectem a duração da totalidade centrada no Max.
+      phaseOffsets: { C1: 0,   C2: 15,  Max: 0,   C3: -15, "Pôr": 0 }
     },
     {
       id: "portillo",
@@ -1410,7 +1437,9 @@ window.APP_DATA = {
       experience: 4,
       sun: { altitude: 7.4, azimuth: 283 },
       totalityDurationSec: 85,
-      totalityLabel: "≈ 1m 25s"
+      totalityLabel: "≈ 1m 25s",
+      // Praticamente igual a Candamia; totalidade marginalmente mais curta.
+      phaseOffsets: { C1: 0,   C2: 18,  Max: 0,   C3: -17, "Pôr": 0 }
     },
     {
       id: "paramo",
@@ -1431,7 +1460,10 @@ window.APP_DATA = {
       experience: 4,
       sun: { altitude: 7.5, azimuth: 283 },
       totalityDurationSec: 70,
-      totalityLabel: "≈ 1m 10s"
+      totalityLabel: "≈ 1m 10s",
+      // ~20 km S e W de León: totalidade mais curta, pôr-do-Sol ligeiramente
+      // mais tarde (longitude mais a W ganha à latitude mais a S).
+      phaseOffsets: { C1: -10, C2: 15,  Max: -10, C3: -35, "Pôr": 20 }
     },
     {
       id: "babia",
@@ -1452,7 +1484,11 @@ window.APP_DATA = {
       experience: 5,
       sun: { altitude: 7.8, azimuth: 283 },
       totalityDurationSec: 100,
-      totalityLabel: "≈ 1m 40s"
+      totalityLabel: "≈ 1m 40s",
+      // ~40 km NW de León, mais perto da linha central. Umbra desloca-se
+      // E→W, por isso Max ocorre ~35s antes. Pôr-do-Sol ~3min mais tarde
+      // (longitude e latitude favoráveis).
+      phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
     }
   ],
 
@@ -1646,6 +1682,8 @@ window.APP_DATA = {
       azimuth: "Azimute",
       totalityDuration: "Totalidade",
       approxDisclaimer: "Valores aproximados — confirmar com fontes oficiais perto da data.",
+      timingsAdjusted: "Timings ajustados para",
+      timingsGeneric: "Timings: média regional (define um Spot Principal para ajustar)",
       sectionWeather: "Meteorologia (Open-Meteo)",
       refreshForecast: "Atualizar previsão",
       lastUpdated: "Última atualização",
@@ -1750,6 +1788,8 @@ window.APP_DATA = {
       azimuth: "Azimuth",
       totalityDuration: "Totality",
       approxDisclaimer: "Approximate values — verify with official sources near the date.",
+      timingsAdjusted: "Timings adjusted for",
+      timingsGeneric: "Timings: regional average (set a Primary Spot to adjust)",
       sectionWeather: "Weather (Open-Meteo)",
       refreshForecast: "Refresh forecast",
       lastUpdated: "Last updated",
@@ -2160,6 +2200,7 @@ window.APP_DATA = {
     renderSpots();
     updateSummary();
     updateWeatherRecommendation();
+    refreshTimingsUI();
   }
 
   function setBackupSpot(id) {
@@ -2192,6 +2233,44 @@ window.APP_DATA = {
 
   function findSpot(id) {
     return window.APP_DATA.spots.find((s) => s.id === id);
+  }
+
+  // -----------------------------------------------------------
+  // Spot-adjusted phase times
+  //
+  // Cada fase tem um tUTC genérico (média da região de León). Cada spot
+  // pode ter `phaseOffsets` (segundos) que ajustam o timing relativamente
+  // à referência. Quando o Spot Principal está definido, todos os timings
+  // (countdown, cues de áudio, lista de fases) usam os valores ajustados.
+  // -----------------------------------------------------------
+  function adjustedPhaseTimeMs(code, spotId) {
+    const phase = (window.APP_DATA.phases || []).find((p) => p.code === code);
+    if (!phase || !phase.tUTC) return null;
+    let ms = new Date(phase.tUTC).getTime();
+    const id = spotId !== undefined ? spotId : state.primarySpotId;
+    if (id) {
+      const spot = findSpot(id);
+      const off = spot && spot.phaseOffsets && spot.phaseOffsets[code];
+      if (typeof off === "number") ms += off * 1000;
+    }
+    return ms;
+  }
+
+  function formatLocalHMS(ms) {
+    // Sempre Europe/Madrid (CEST em Agosto = UTC+2) — corresponde ao local do eclipse.
+    return new Date(ms).toLocaleTimeString("pt-PT", {
+      timeZone: "Europe/Madrid",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+    });
+  }
+
+  // Re-renderiza tudo o que depende dos timings ajustados ao spot.
+  // Chamado em setPrimarySpot e mudança de idioma.
+  function refreshTimingsUI() {
+    renderPhases();
+    updateCountdown();
+    AudioCue.renderNextCue();
+    AudioCue.renderCueList();
   }
 
   // -----------------------------------------------------------
@@ -2554,6 +2633,8 @@ window.APP_DATA = {
     if (!ol) return;
     ol.innerHTML = "";
 
+    const primary = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+
     window.APP_DATA.phases.forEach((p) => {
       const li = document.createElement("li");
       li.className = "phase-item";
@@ -2565,10 +2646,18 @@ window.APP_DATA = {
       code.className = "phase-code";
       code.textContent = p.code;
 
+      // Quando há Spot Principal, mostra tempo absoluto ajustado (HH:MM:SS).
+      // Caso contrário, usa a string genérica original ("≈ 19:30").
+      let timeText = p.time;
+      if (primary && p.tUTC) {
+        const adj = adjustedPhaseTimeMs(p.code, primary.id);
+        if (adj != null) timeText = "≈ " + formatLocalHMS(adj);
+      }
+
       const body = document.createElement("div");
       body.className = "phase-body";
       body.innerHTML =
-        `<span class="phase-time">${escape(p.time)}</span>` +
+        `<span class="phase-time">${escape(timeText)}</span>` +
         `<span class="phase-title">${escape(p.title)}</span>` +
         `<span class="phase-detail">${escape(p.detail)}</span>`;
 
@@ -2576,6 +2665,25 @@ window.APP_DATA = {
       li.appendChild(body);
       ol.appendChild(li);
     });
+
+    renderTimingsNotice();
+  }
+
+  // Pequeno aviso por baixo das fases / no painel áudio a indicar
+  // se os timings estão ajustados ao Spot Principal ou são genéricos.
+  function renderTimingsNotice() {
+    const el = $("#timings-notice");
+    if (!el) return;
+    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    if (spot) {
+      el.textContent = t("timingsAdjusted") + ": " + spot.name;
+      el.classList.add("is-adjusted");
+      el.classList.remove("is-generic");
+    } else {
+      el.textContent = t("timingsGeneric");
+      el.classList.add("is-generic");
+      el.classList.remove("is-adjusted");
+    }
   }
 
   // -----------------------------------------------------------
@@ -2641,8 +2749,14 @@ window.APP_DATA = {
     const val = $("#countdown-value");
     if (!el || !val || !window.APP_DATA.eclipse) return;
 
-    const startMs = new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
-    const endMs   = new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
+    // Usa timings ajustados ao Spot Principal quando definido,
+    // senão cai nos valores genéricos da região.
+    const c2 = adjustedPhaseTimeMs("C2");
+    const c3 = adjustedPhaseTimeMs("C3");
+    const startMs = c2 != null ? c2
+                                : new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+    const endMs   = c3 != null ? c3
+                                : new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
     const now = Date.now();
 
     el.classList.remove("is-active", "is-done");
@@ -2838,10 +2952,9 @@ window.APP_DATA = {
     },
 
     cueTimeMs(cue) {
-      const phase = (window.APP_DATA && window.APP_DATA.phases || [])
-        .find((p) => p.code === cue.refPhase);
-      if (!phase || !phase.tUTC) return null;
-      return new Date(phase.tUTC).getTime() + (cue.offsetSec || 0) * 1000;
+      const base = adjustedPhaseTimeMs(cue.refPhase);
+      if (base == null) return null;
+      return base + (cue.offsetSec || 0) * 1000;
     },
 
     cueText(cue, stale) {
@@ -3027,10 +3140,7 @@ window.APP_DATA = {
         const time = document.createElement("span");
         time.className = "audio-cue-time";
         if (ct != null) {
-          const d = new Date(ct);
-          time.textContent = d.toLocaleTimeString([], {
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-          });
+          time.textContent = formatLocalHMS(ct);
         } else {
           time.textContent = "—";
         }
