@@ -693,13 +693,23 @@
       }).addTo(map);
 
       // Marker León
-      L.marker(center).addTo(map).bindPopup("León (base)");
+      const leonMarker = L.marker(center).addTo(map).bindPopup("León (base)");
 
       // Markers para spots
+      const markers = [leonMarker];
       window.APP_DATA.spots.forEach((s) => {
         if (!s.coords) return;
-        L.marker(s.coords).addTo(map).bindPopup(`<strong>${escape(s.name)}</strong>`);
+        markers.push(L.marker(s.coords).addTo(map).bindPopup(`<strong>${escape(s.name)}</strong>`));
       });
+
+      // Auto-fit a todos os marcadores, com zoom máximo limitado para
+      // não ficar demasiado próximo quando os spots estão todos juntos
+      // perto de León. Quando há spots distantes (ex.: Caxado, Galiza),
+      // o mapa zoom-out automaticamente para os incluir.
+      if (markers.length > 1) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 9 });
+      }
     } catch (err) {
       console.warn("Map init failed:", err);
       mapEl.classList.add("hidden");

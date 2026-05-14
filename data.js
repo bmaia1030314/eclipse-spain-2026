@@ -283,6 +283,33 @@ window.APP_DATA = {
       // E→W, por isso Max ocorre ~35s antes. Pôr-do-Sol ~3min mais tarde
       // (longitude e latitude favoráveis).
       phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
+    },
+    {
+      id: "caxado",
+      name: "Mirador Monte Caxado (Galiza)",
+      type: "montanha",
+      distance: "long",
+      distanceLabel: "Muito longo (≈ 3h de carro de León)",
+      coords: [43.4744, -7.7311],
+      why: "Mirador panorâmico a ~1037 m no NW da Galiza (As Pontes / Vilalba). Microclima Atlântico totalmente diferente do interior castelhano — útil como plano B se houver risco de nuvens em toda a região de León. Próximo da linha central na entrada da umbra em Espanha (totalidade ligeiramente mais longa que em León). Sol um pouco mais alto porque a totalidade acontece mais cedo em relação ao pôr-do-sol local.",
+      alerts: [
+        "≈ 3h de carro desde León — considerar dormir na zona se for o spot escolhido",
+        "Meteorologia atlântica — variável, vento e nuvens marítimas possíveis",
+        "Acesso por estradas de montanha; confirmar estacionamento no mirador",
+        "Cobertura Street View pode ser limitada — usar 'Abrir no Google Maps' para confirmar acesso",
+      ],
+      howToFind: "Mirador Monte Caxado As Pontes Galicia",
+      tags: ["fotogenico", "wow", "backup_meteo"],
+      facility: 1,
+      experience: 5,
+      sun: { altitude: 7.6, azimuth: 283 },
+      totalityDurationSec: 110,
+      totalityLabel: "≈ 1m 50s",
+      // Galiza está a ~270 km NW de León. A umbra desloca-se de NW para
+      // SE em Espanha, por isso a totalidade ocorre ~90s ANTES que em
+      // León. O pôr-do-sol local é ~14 min mais tarde (Δlon ≈ 2°W +
+      // latitude ligeiramente mais alta no Verão).
+      phaseOffsets: { C1: -85, C2: -85, Max: -90, C3: -95, "Pôr": 840 }
     }
   ],
 
@@ -342,14 +369,16 @@ window.APP_DATA = {
     clear:    { spotId: "candamia", reason: "Céu limpo — não precisa de altitude extra. La Candamia oferece proximidade e logística simples." },
     haze:     { spotId: "portillo", reason: "Com haze/horizonte sujo, ganhar altitude ajuda. Alto del Portillo dá vista mais limpa." },
     clouds:   { spotId: "paramo",   reason: "Risco de nuvens isoladas — planícies do Páramo permitem ajustar a posição rapidamente." },
-    mountain: { spotId: "babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." }
+    mountain: { spotId: "babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." },
+    atlantic: { spotId: "caxado",   reason: "Interior castelhano com nebulosidade generalizada — fugir para o Atlântico. Mirador Monte Caxado (Galiza) está noutro sistema meteorológico e perto da linha central. ~3h de viagem desde León." }
   },
 
   weatherOptions: [
     { value: "clear",    label: "Céu limpo" },
     { value: "haze",     label: "Algum haze / horizonte sujo" },
     { value: "clouds",   label: "Risco de nuvens isoladas" },
-    { value: "mountain", label: "Estável e quer foco em fotos" }
+    { value: "mountain", label: "Estável e quer foco em fotos" },
+    { value: "atlantic", label: "Interior castelhano com mau tempo geral — fuga para Galiza" }
   ],
 
   // ---------- Checklist ----------
