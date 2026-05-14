@@ -3,7 +3,7 @@
   Eclipse Solar Total — León 2026
   Single-file build. Tudo (HTML + CSS + dados + lógica) está aqui.
   Apenas Leaflet é carregado via CDN — se falhar, o resto continua a funcionar.
-  Gerado em: 2026-05-13T19:52:31.338Z
+  Gerado em: 2026-05-14T09:00:11.644Z
 -->
 <html lang="pt-PT">
 <head>
@@ -787,6 +787,55 @@ h3 {
   border-left: 3px solid #48bb78;
 }
 
+/* ---------- Street View panel ---------- */
+.streetview-panel {
+  margin: 16px 0 24px;
+  padding: 16px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.streetview-panel.hidden { display: none; }
+.streetview-head { margin-bottom: 12px; }
+.streetview-title {
+  font-size: 1.05rem;
+  margin: 0 0 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.streetview-spot-name { color: var(--accent, #2b6cb0); font-weight: 600; }
+.streetview-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted, #4a5568);
+}
+.streetview-frame-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #1a202c;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.streetview-frame {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: 0;
+  display: block;
+}
+.streetview-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media print {
+  .streetview-panel { display: none !important; }
+}
+
 /* ---------- Audio cues ---------- */
 .audio-cues {
   display: flex;
@@ -1023,6 +1072,35 @@ h3 {
       <p id="map-fallback" class="map-fallback hidden" data-i18n="mapFallback">
         Mapa indisponível — usa a lista de spots abaixo.
       </p>
+
+      <!-- Street View do Spot Principal -->
+      <div id="streetview-panel" class="streetview-panel hidden" aria-live="polite">
+        <div class="streetview-head">
+          <h3 class="streetview-title">
+            <span data-i18n="streetviewTitle">Vista do Spot Principal</span>
+            <span class="streetview-spot-name" id="streetview-spot-name"></span>
+          </h3>
+          <p class="streetview-hint" data-i18n="streetviewHint">
+            Câmara apontada na direção do Sol durante a totalidade. Em zonas rurais a vista pode cair na estrada mais próxima.
+          </p>
+        </div>
+        <div class="streetview-frame-wrap">
+          <iframe
+            id="streetview-frame"
+            class="streetview-frame"
+            title="Google Street View"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allow="fullscreen"
+            src="about:blank"></iframe>
+        </div>
+        <div class="streetview-actions">
+          <a id="streetview-open-maps" class="btn btn-secondary" target="_blank" rel="noopener"
+             data-i18n="streetviewOpenMaps">Abrir no Google Maps</a>
+          <a id="streetview-open-sv" class="btn" target="_blank" rel="noopener"
+             data-i18n="streetviewOpenSv">Abrir Street View</a>
+        </div>
+      </div>
 
       <!-- Filtros -->
       <div class="filters" aria-label="Filtros e ordenação">
@@ -1684,6 +1762,11 @@ window.APP_DATA = {
       approxDisclaimer: "Valores aproximados — confirmar com fontes oficiais perto da data.",
       timingsAdjusted: "Timings ajustados para",
       timingsGeneric: "Timings: média regional (define um Spot Principal para ajustar)",
+      streetviewTitle: "Vista do Spot Principal",
+      streetviewHint: "Câmara apontada na direção do Sol durante a totalidade. Em zonas rurais a vista pode cair na estrada mais próxima.",
+      streetviewOpenMaps: "Abrir no Google Maps",
+      streetviewOpenSv: "Abrir Street View",
+      streetviewNoCoverage: "Sem cobertura Street View neste ponto exacto. Tenta abrir no Google Maps e arrastar o ícone até à estrada mais próxima.",
       sectionWeather: "Meteorologia (Open-Meteo)",
       refreshForecast: "Atualizar previsão",
       lastUpdated: "Última atualização",
@@ -1790,6 +1873,11 @@ window.APP_DATA = {
       approxDisclaimer: "Approximate values — verify with official sources near the date.",
       timingsAdjusted: "Timings adjusted for",
       timingsGeneric: "Timings: regional average (set a Primary Spot to adjust)",
+      streetviewTitle: "View of the Primary Spot",
+      streetviewHint: "Camera oriented toward the Sun during totality. In rural areas the view may snap to the nearest road.",
+      streetviewOpenMaps: "Open in Google Maps",
+      streetviewOpenSv: "Open Street View",
+      streetviewNoCoverage: "No Street View coverage at this exact point. Try opening in Google Maps and dragging the pegman to the nearest road.",
       sectionWeather: "Weather (Open-Meteo)",
       refreshForecast: "Refresh forecast",
       lastUpdated: "Last updated",
@@ -1939,6 +2027,7 @@ window.APP_DATA = {
     renderSpots();
     updateSummary();
     initMap();
+    renderStreetView();
     renderMeteo();          // load from cache if available
     renderMeteoDisclaimer();
     startAppClock();        // ticks countdown + audio cues every 1s
@@ -2271,6 +2360,71 @@ window.APP_DATA = {
     updateCountdown();
     AudioCue.renderNextCue();
     AudioCue.renderCueList();
+    renderStreetView();
+  }
+
+  // -----------------------------------------------------------
+  // Street View do Spot Principal
+  //
+  // Usa a URL de embed do Google Maps (output=svembed) que NÃO requer
+  // chave de API. Limitações conhecidas:
+  //   - Em zonas rurais (Páramo, Babia) pode não haver cobertura no
+  //     ponto exacto; o panorama pode aparecer vazio ou cair na
+  //     estrada mais próxima.
+  //   - O parâmetro cbp=11,heading,0,zoom,pitch aceita o azimute do
+  //     Sol para alinhar a vista com a direção da totalidade.
+  // -----------------------------------------------------------
+  function renderStreetView() {
+    const panel = $("#streetview-panel");
+    const frame = $("#streetview-frame");
+    const nameEl = $("#streetview-spot-name");
+    const linkMaps = $("#streetview-open-maps");
+    const linkSv = $("#streetview-open-sv");
+    if (!panel || !frame) return;
+
+    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    if (!spot || !spot.coords || spot.coords.length < 2) {
+      panel.classList.add("hidden");
+      // Liberta a iframe para não consumir rede em background.
+      if (frame.src && frame.src !== "about:blank") frame.src = "about:blank";
+      return;
+    }
+
+    const [lat, lng] = spot.coords;
+    const heading = Math.round((spot.sun && spot.sun.azimuth) || 270);
+    const pitch = 0;
+    const fov = 90;
+
+    // svembed: panorama "puro", sem UI extra.
+    const svEmbed =
+      "https://maps.google.com/maps?q=&layer=c" +
+      "&cbll=" + lat + "," + lng +
+      "&cbp=11," + heading + ",0," + fov + "," + pitch +
+      "&output=svembed";
+
+    // Só atualiza src se mudou — evita reload desnecessário.
+    if (frame.dataset.spotId !== spot.id) {
+      frame.src = svEmbed;
+      frame.dataset.spotId = spot.id;
+    }
+
+    if (nameEl) nameEl.textContent = " — " + spot.name;
+
+    // Link "Abrir no Google Maps" (mostra o pino + permite trocar para SV)
+    if (linkMaps) {
+      linkMaps.href = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng;
+    }
+    // Link "Abrir Street View" (entra directamente em modo SV)
+    if (linkSv) {
+      linkSv.href =
+        "https://www.google.com/maps/@?api=1&map_action=pano" +
+        "&viewpoint=" + lat + "," + lng +
+        "&heading=" + heading +
+        "&pitch=" + pitch +
+        "&fov=" + fov;
+    }
+
+    panel.classList.remove("hidden");
   }
 
   // -----------------------------------------------------------

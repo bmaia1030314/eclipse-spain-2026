@@ -772,6 +772,55 @@ h3 {
   border-left: 3px solid #48bb78;
 }
 
+/* ---------- Street View panel ---------- */
+.streetview-panel {
+  margin: 16px 0 24px;
+  padding: 16px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.streetview-panel.hidden { display: none; }
+.streetview-head { margin-bottom: 12px; }
+.streetview-title {
+  font-size: 1.05rem;
+  margin: 0 0 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.streetview-spot-name { color: var(--accent, #2b6cb0); font-weight: 600; }
+.streetview-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted, #4a5568);
+}
+.streetview-frame-wrap {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #1a202c;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.streetview-frame {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: 0;
+  display: block;
+}
+.streetview-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media print {
+  .streetview-panel { display: none !important; }
+}
+
 /* ---------- Audio cues ---------- */
 .audio-cues {
   display: flex;

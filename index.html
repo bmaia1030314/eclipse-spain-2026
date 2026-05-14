@@ -63,6 +63,35 @@
         Mapa indisponível — usa a lista de spots abaixo.
       </p>
 
+      <!-- Street View do Spot Principal -->
+      <div id="streetview-panel" class="streetview-panel hidden" aria-live="polite">
+        <div class="streetview-head">
+          <h3 class="streetview-title">
+            <span data-i18n="streetviewTitle">Vista do Spot Principal</span>
+            <span class="streetview-spot-name" id="streetview-spot-name"></span>
+          </h3>
+          <p class="streetview-hint" data-i18n="streetviewHint">
+            Câmara apontada na direção do Sol durante a totalidade. Em zonas rurais a vista pode cair na estrada mais próxima.
+          </p>
+        </div>
+        <div class="streetview-frame-wrap">
+          <iframe
+            id="streetview-frame"
+            class="streetview-frame"
+            title="Google Street View"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allow="fullscreen"
+            src="about:blank"></iframe>
+        </div>
+        <div class="streetview-actions">
+          <a id="streetview-open-maps" class="btn btn-secondary" target="_blank" rel="noopener"
+             data-i18n="streetviewOpenMaps">Abrir no Google Maps</a>
+          <a id="streetview-open-sv" class="btn" target="_blank" rel="noopener"
+             data-i18n="streetviewOpenSv">Abrir Street View</a>
+        </div>
+      </div>
+
       <!-- Filtros -->
       <div class="filters" aria-label="Filtros e ordenação">
         <fieldset>

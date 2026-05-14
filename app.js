@@ -84,6 +84,7 @@
     renderSpots();
     updateSummary();
     initMap();
+    renderStreetView();
     renderMeteo();          // load from cache if available
     renderMeteoDisclaimer();
     startAppClock();        // ticks countdown + audio cues every 1s
@@ -416,6 +417,71 @@
     updateCountdown();
     AudioCue.renderNextCue();
     AudioCue.renderCueList();
+    renderStreetView();
+  }
+
+  // -----------------------------------------------------------
+  // Street View do Spot Principal
+  //
+  // Usa a URL de embed do Google Maps (output=svembed) que NÃO requer
+  // chave de API. Limitações conhecidas:
+  //   - Em zonas rurais (Páramo, Babia) pode não haver cobertura no
+  //     ponto exacto; o panorama pode aparecer vazio ou cair na
+  //     estrada mais próxima.
+  //   - O parâmetro cbp=11,heading,0,zoom,pitch aceita o azimute do
+  //     Sol para alinhar a vista com a direção da totalidade.
+  // -----------------------------------------------------------
+  function renderStreetView() {
+    const panel = $("#streetview-panel");
+    const frame = $("#streetview-frame");
+    const nameEl = $("#streetview-spot-name");
+    const linkMaps = $("#streetview-open-maps");
+    const linkSv = $("#streetview-open-sv");
+    if (!panel || !frame) return;
+
+    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    if (!spot || !spot.coords || spot.coords.length < 2) {
+      panel.classList.add("hidden");
+      // Liberta a iframe para não consumir rede em background.
+      if (frame.src && frame.src !== "about:blank") frame.src = "about:blank";
+      return;
+    }
+
+    const [lat, lng] = spot.coords;
+    const heading = Math.round((spot.sun && spot.sun.azimuth) || 270);
+    const pitch = 0;
+    const fov = 90;
+
+    // svembed: panorama "puro", sem UI extra.
+    const svEmbed =
+      "https://maps.google.com/maps?q=&layer=c" +
+      "&cbll=" + lat + "," + lng +
+      "&cbp=11," + heading + ",0," + fov + "," + pitch +
+      "&output=svembed";
+
+    // Só atualiza src se mudou — evita reload desnecessário.
+    if (frame.dataset.spotId !== spot.id) {
+      frame.src = svEmbed;
+      frame.dataset.spotId = spot.id;
+    }
+
+    if (nameEl) nameEl.textContent = " — " + spot.name;
+
+    // Link "Abrir no Google Maps" (mostra o pino + permite trocar para SV)
+    if (linkMaps) {
+      linkMaps.href = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lng;
+    }
+    // Link "Abrir Street View" (entra directamente em modo SV)
+    if (linkSv) {
+      linkSv.href =
+        "https://www.google.com/maps/@?api=1&map_action=pano" +
+        "&viewpoint=" + lat + "," + lng +
+        "&heading=" + heading +
+        "&pitch=" + pitch +
+        "&fov=" + fov;
+    }
+
+    panel.classList.remove("hidden");
   }
 
   // -----------------------------------------------------------
