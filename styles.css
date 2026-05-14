@@ -125,6 +125,23 @@ body {
   margin-top: 2px;
 }
 
+.summary-card-plan { padding: 8px 14px; }
+.plan-select {
+  margin-top: 4px;
+  background: rgba(0,0,0,0.25);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  width: 100%;
+}
+.plan-select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* ---------- Countdown ---------- */
 .countdown {
   margin-top: 14px;
@@ -652,7 +669,7 @@ h3 {
 /* ---------- Responsive: tablet+ ---------- */
 @media (min-width: 640px) {
   .brand h1 { font-size: 1.6rem; }
-  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .summary-grid { grid-template-columns: repeat(4, 1fr); }
   .cards-grid { grid-template-columns: repeat(2, 1fr); }
   .filters { grid-template-columns: repeat(2, 1fr) auto; align-items: end; }
   .checklist { grid-template-columns: repeat(2, 1fr); }

@@ -31,6 +31,12 @@
     </div>
 
     <div class="container summary-grid" aria-label="Resumo">
+      <div class="summary-card summary-card-plan">
+        <span class="summary-label" data-i18n="planLabel">Plano</span>
+        <select id="plan-select" class="plan-select" aria-label="Plano de observação">
+          <!-- Opções preenchidas por app.js a partir de window.APP_DATA.plans -->
+        </select>
+      </div>
       <div class="summary-card">
         <span class="summary-label" data-i18n="myBase">Base</span>
         <span class="summary-value" id="summary-base">León</span>
@@ -55,7 +61,7 @@
 
     <!-- ============== SPOTS ============== -->
     <section id="section-spots" aria-labelledby="h-spots">
-      <h2 id="h-spots" data-i18n="sectionSpots">Spots de Observação (perto de León)</h2>
+      <h2 id="h-spots">Spots de Observação</h2>
 
       <!-- Mapa (opcional) -->
       <div id="map" aria-label="Mapa dos spots" role="region"></div>
@@ -132,7 +138,7 @@
 
     <!-- ============== HOTÉIS ============== -->
     <section id="section-hotels" aria-labelledby="h-hotels">
-      <h2 id="h-hotels" data-i18n="sectionHotels">Hotéis em León (base recomendada)</h2>
+      <h2 id="h-hotels">Hotéis (base recomendada)</h2>
       <div id="hotels-grid" class="cards-grid"></div>
       <p class="disclaimer" data-i18n="hotelDisclaimer">
         Confirmar disponibilidade e estacionamento no momento da reserva.

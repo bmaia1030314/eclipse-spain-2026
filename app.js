@@ -15,12 +15,34 @@
   // -----------------------------------------------------------
   // Estado / persistência
   // -----------------------------------------------------------
+  //
+  // Storage layout (v2 — suporta dois planos):
+  //   eclipse2026.lang            — "pt" | "en"
+  //   eclipse2026.currentPlan     — "leon" | "caxado"
+  //   eclipse2026.primaryByPlan   — JSON { leon: spotId?, caxado: spotId? }
+  //   eclipse2026.backupByPlan    — JSON { leon: spotId?, caxado: spotId? }
+  //   eclipse2026.weatherByPlan   — JSON { leon: "clear", caxado: "haze", ... }
+  //   eclipse2026.meteoCache.v2   — JSON { leon: { updatedAt, spots }, caxado: ... }
+  //   eclipse2026.checklist       — JSON { itemId: bool }            (partilhado)
+  //   eclipse2026.audioFired      — JSON { leon: [ids], caxado: [ids] } (sessionStorage)
+  //
+  // Migração v1→v2: chaves antigas (primarySpot, backupSpot, meteoCache) são
+  // lidas e copiadas para o namespace "leon" e depois removidas. Os IDs
+  // antigos não tinham prefixo, por isso prefixam-se com "leon-" se assim
+  // existirem no plano leon.
+  // -----------------------------------------------------------
   const STORAGE_KEYS = {
-    primary:   "eclipse2026.primarySpot",
-    backup:    "eclipse2026.backupSpot",
-    checklist: "eclipse2026.checklist",
-    lang:      "eclipse2026.lang",
-    meteo:     "eclipse2026.meteoCache"
+    lang:           "eclipse2026.lang",
+    currentPlan:    "eclipse2026.currentPlan",
+    primaryByPlan:  "eclipse2026.primaryByPlan",
+    backupByPlan:   "eclipse2026.backupByPlan",
+    weatherByPlan:  "eclipse2026.weatherByPlan",
+    checklist:      "eclipse2026.checklist",
+    meteo:          "eclipse2026.meteoCache.v2",
+    // legacy (v1)
+    legacyPrimary:  "eclipse2026.primarySpot",
+    legacyBackup:   "eclipse2026.backupSpot",
+    legacyMeteo:    "eclipse2026.meteoCache"
   };
 
   // Safe localStorage wrappers — alguns contextos (file://, modo privado)
@@ -40,24 +62,111 @@
     }
   };
 
+  function readJSON(key, fallback) {
+    try {
+      const raw = safeStorage.get(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed != null ? parsed : fallback;
+    } catch (e) { return fallback; }
+  }
+
+  function writeJSON(key, value) {
+    try { safeStorage.set(key, JSON.stringify(value)); }
+    catch (e) { /* ignore */ }
+  }
+
+  // Migração lazy a partir das chaves v1.
+  function migrateLegacyStorageIfNeeded() {
+    // Só migra se ainda não há valores na v2.
+    const hasNew = safeStorage.get(STORAGE_KEYS.primaryByPlan)
+                || safeStorage.get(STORAGE_KEYS.backupByPlan)
+                || safeStorage.get(STORAGE_KEYS.currentPlan);
+    const legacyPrimary = safeStorage.get(STORAGE_KEYS.legacyPrimary);
+    const legacyBackup  = safeStorage.get(STORAGE_KEYS.legacyBackup);
+
+    if (!hasNew && (legacyPrimary || legacyBackup)) {
+      const data = (window.APP_DATA || {});
+      const leonSpots = ((data.plans || {}).leon || {}).spots || [];
+      const mapToLeonId = (id) => {
+        if (!id) return null;
+        // Já tem prefixo?
+        if (leonSpots.some((s) => s.id === id)) return id;
+        // Tentar prefixar.
+        const tryPref = "leon-" + id;
+        if (leonSpots.some((s) => s.id === tryPref)) return tryPref;
+        return null;
+      };
+      const primary = { leon: mapToLeonId(legacyPrimary), caxado: null };
+      const backup  = { leon: mapToLeonId(legacyBackup),  caxado: null };
+      writeJSON(STORAGE_KEYS.primaryByPlan, primary);
+      writeJSON(STORAGE_KEYS.backupByPlan,  backup);
+    }
+
+    // Limpar chaves legadas (já não são usadas).
+    if (legacyPrimary) safeStorage.remove(STORAGE_KEYS.legacyPrimary);
+    if (legacyBackup)  safeStorage.remove(STORAGE_KEYS.legacyBackup);
+    // Cache de meteo: descartar a v1 (formato podia conter IDs sem prefixo).
+    if (safeStorage.get(STORAGE_KEYS.legacyMeteo)) {
+      safeStorage.remove(STORAGE_KEYS.legacyMeteo);
+    }
+  }
+
   const state = {
     lang: safeStorage.get(STORAGE_KEYS.lang) || "pt",
-    primarySpotId: safeStorage.get(STORAGE_KEYS.primary) || null,
-    backupSpotId:  safeStorage.get(STORAGE_KEYS.backup)  || null,
+    currentPlanId: null,         // preenchido em init
+    primaryByPlan: { leon: null, caxado: null },
+    backupByPlan:  { leon: null, caxado: null },
+    weatherByPlan: { leon: "clear", caxado: "clear" },
     filters: { distance: "all", type: "all", priority: "all" },
     sortBy: "facility",
-    weather: "clear",
-    meteoCache: null     // in-memory mirror of forecast cache
+    meteoCache: null     // in-memory mirror of forecast cache (whole object: { leon, caxado })
   };
+
+  // Devolve o plano activo a partir de window.APP_DATA.plans[currentPlanId].
+  function getCurrentPlan() {
+    const plans = (window.APP_DATA && window.APP_DATA.plans) || {};
+    return plans[state.currentPlanId] || plans.leon || Object.values(plans)[0] || {};
+  }
 
   // Atalhos
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const t = (key) => {
+  // i18n com substituição opcional de variáveis: t("sectionSpotsTpl", { city: "León" }).
+  const t = (key, vars) => {
     const dict = (window.APP_DATA.i18n[state.lang]) || window.APP_DATA.i18n.pt;
-    return dict[key] || key;
+    let txt = dict[key] != null ? dict[key] : key;
+    if (vars && typeof txt === "string") {
+      Object.keys(vars).forEach((k) => {
+        txt = txt.replace(new RegExp("\\{" + k + "\\}", "g"), String(vars[k]));
+      });
+    }
+    return txt;
   };
+
+  // Nome do plano traduzido ("Plano A — León (Castilla)" etc.).
+  function planLabel(plan) {
+    if (!plan) return "";
+    return state.lang === "pt" ? (plan.namePt || plan.id) : (plan.nameEn || plan.id);
+  }
+
+  // Região traduzida do plano activo (ex. "Castilla y León" / "Galicia").
+  function planRegion(plan) {
+    if (!plan || !plan.base) return "";
+    return state.lang === "pt" ? (plan.base.regionPt || "") : (plan.base.regionEn || "");
+  }
+
+  // Substituição de {base}/{region} em strings vindas de data.js (cues áudio,
+  // timeline). Usa o plano ACTIVO no momento de speak/render.
+  function substituteBase(s) {
+    const plan = getCurrentPlan();
+    const base = (plan.base && plan.base.city) || "";
+    const region = planRegion(plan);
+    return String(s || "")
+      .replace(/\{base\}/g, base)
+      .replace(/\{region\}/g, region);
+  }
 
   // -----------------------------------------------------------
   // Inicialização
@@ -68,11 +177,36 @@
       return;
     }
 
+    // Migrar chaves antigas (v1 → v2) antes de ler estado.
+    migrateLegacyStorageIfNeeded();
+
+    // Carregar mapas plan-scoped do storage.
+    const primaryByPlan = readJSON(STORAGE_KEYS.primaryByPlan, null);
+    if (primaryByPlan && typeof primaryByPlan === "object") {
+      state.primaryByPlan = Object.assign(state.primaryByPlan, primaryByPlan);
+    }
+    const backupByPlan = readJSON(STORAGE_KEYS.backupByPlan, null);
+    if (backupByPlan && typeof backupByPlan === "object") {
+      state.backupByPlan = Object.assign(state.backupByPlan, backupByPlan);
+    }
+    const weatherByPlan = readJSON(STORAGE_KEYS.weatherByPlan, null);
+    if (weatherByPlan && typeof weatherByPlan === "object") {
+      state.weatherByPlan = Object.assign(state.weatherByPlan, weatherByPlan);
+    }
+
+    // Plano activo: valor persistido se válido, senão "leon".
+    const stored = safeStorage.get(STORAGE_KEYS.currentPlan);
+    const plans = (window.APP_DATA.plans || {});
+    state.currentPlanId = (stored && plans[stored]) ? stored : "leon";
+
     // Idioma inicial
     $("#lang-select").value = state.lang;
     document.documentElement.lang = state.lang === "pt" ? "pt-PT" : "en";
 
+    populatePlanSelect();
+
     applyTranslations();
+    applyDynamicTitles();
     renderWeatherOptions();
     renderTimeline();
     renderPhases();
@@ -92,8 +226,23 @@
     bindEvents();
   });
 
+  // Preenche o <select id="plan-select"> com os planos disponíveis.
+  function populatePlanSelect() {
+    const sel = $("#plan-select");
+    if (!sel) return;
+    sel.innerHTML = "";
+    Object.keys(window.APP_DATA.plans || {}).forEach((id) => {
+      const plan = window.APP_DATA.plans[id];
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = planLabel(plan);
+      sel.appendChild(opt);
+    });
+    sel.value = state.currentPlanId;
+  }
+
   // -----------------------------------------------------------
-  // Tradução estática (elementos com data-i18n)
+  // Tradução estática (elementos com data-i18n) + títulos dinâmicos
   // -----------------------------------------------------------
   function applyTranslations() {
     $$("[data-i18n]").forEach((el) => {
@@ -103,6 +252,22 @@
     });
     // Recolocar valores "Spot não definido" no resumo se necessário
     updateSummary();
+  }
+
+  // Títulos / labels que dependem do plano activo. Devem ser re-aplicados
+  // em qualquer troca de plano OU de idioma.
+  function applyDynamicTitles() {
+    const plan = getCurrentPlan();
+    const city = (plan.base && plan.base.city) || "";
+
+    const hSpots = document.getElementById("h-spots");
+    if (hSpots) hSpots.textContent = t("sectionSpotsTpl", { city: city });
+
+    const hHotels = document.getElementById("h-hotels");
+    if (hHotels) hHotels.textContent = t("sectionHotelsTpl", { city: city });
+
+    // Re-popular o select com nomes traduzidos sempre que muda o idioma.
+    populatePlanSelect();
   }
 
   // -----------------------------------------------------------
@@ -115,6 +280,7 @@
       safeStorage.set(STORAGE_KEYS.lang, state.lang);
       document.documentElement.lang = state.lang === "pt" ? "pt-PT" : "en";
       applyTranslations();
+      applyDynamicTitles();
       // Re-render para etiquetas dinâmicas dos cards/timeline
       renderTimeline();
       renderPhases();
@@ -133,6 +299,12 @@
       AudioCue.renderCueList();
       AudioCue.renderNextCue();
     });
+
+    // Plano
+    const planSel = $("#plan-select");
+    if (planSel) {
+      planSel.addEventListener("change", (e) => setPlan(e.target.value));
+    }
 
     // Filtros
     $$('input[name="f-distance"]').forEach((r) =>
@@ -153,7 +325,8 @@
 
     // Tempo / matriz de decisão
     $("#weather-select").addEventListener("change", (e) => {
-      state.weather = e.target.value;
+      state.weatherByPlan[state.currentPlanId] = e.target.value;
+      writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
       updateWeatherRecommendation();
       highlightDecisionRow();
     });
@@ -167,13 +340,74 @@
   }
 
   // -----------------------------------------------------------
+  // Troca de plano — refresh completo da UI.
+  //
+  // Princípios (validados com rubber-duck):
+  // - Áudio é desactivado por segurança: cues do novo plano podem ter timings
+  //   diferentes e talvez já tenham "passado" no novo plano. Utilizador
+  //   re-activa manualmente.
+  // - Conjunto de cues disparados é por plano: ao trocar, salvamos o set
+  //   actual e carregamos o do novo plano (do sessionStorage).
+  // - Mapa é reusado (uma só instância) — markers são limpos e re-adicionados.
+  // - Estado de meteo está sempre em cache por plano (cache[planId]).
+  // -----------------------------------------------------------
+  function setPlan(newId) {
+    const plans = (window.APP_DATA.plans || {});
+    if (!plans[newId] || newId === state.currentPlanId) return;
+
+    // 1) Persistir conjunto de cues do plano actual antes de trocar.
+    AudioCue.saveFiredForCurrentPlan();
+    // 2) Desactivar áudio: por segurança, evita falar cues do plano novo.
+    const wasAudioEnabled = AudioCue.state.enabled;
+    if (wasAudioEnabled) AudioCue.deactivate();
+
+    // 3) Trocar plano
+    state.currentPlanId = newId;
+    safeStorage.set(STORAGE_KEYS.currentPlan, newId);
+
+    // 4) Validar/normalizar weather do novo plano contra os seus options.
+    const plan = getCurrentPlan();
+    const opts = (plan.weatherOptions || []).map((o) => o.value);
+    if (!state.weatherByPlan[newId] || opts.indexOf(state.weatherByPlan[newId]) === -1) {
+      state.weatherByPlan[newId] = opts[0] || "clear";
+      writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
+    }
+
+    // 5) Reset audio fired state para os cues do novo plano.
+    AudioCue.loadFiredForCurrentPlan();
+
+    // 6) Re-render full
+    applyDynamicTitles();
+    renderWeatherOptions();
+    renderTimeline();
+    renderPhases();
+    renderDecisionTable();
+    renderHotels();
+    renderSpots();
+    updateSummary();
+    refreshMapMarkers();
+    renderStreetView();
+    renderMeteo();
+    renderMeteoDisclaimer();
+    updateCountdown();
+    AudioCue.renderStatus();
+    AudioCue.renderCueList();
+    AudioCue.renderNextCue();
+
+    if (wasAudioEnabled) {
+      // Avisar visualmente o utilizador que o áudio foi desactivado.
+      showToast(t("audioPlanSwitched"));
+    }
+  }
+
+  // -----------------------------------------------------------
   // Render: Spots
   // -----------------------------------------------------------
   function renderSpots() {
     const grid = $("#spots-grid");
     grid.innerHTML = "";
 
-    const list = filterAndSortSpots(window.APP_DATA.spots);
+    const list = filterAndSortSpots(getCurrentPlan().spots || []);
 
     if (list.length === 0) {
       const empty = document.createElement("p");
@@ -207,8 +441,8 @@
   function buildSpotCard(spot) {
     const card = document.createElement("article");
     card.className = "card spot-card";
-    if (spot.id === state.primarySpotId) card.classList.add("is-primary");
-    if (spot.id === state.backupSpotId)  card.classList.add("is-backup");
+    if (spot.id === currentPrimaryId()) card.classList.add("is-primary");
+    if (spot.id === currentBackupId())  card.classList.add("is-backup");
 
     // Header
     const header = document.createElement("div");
@@ -227,8 +461,8 @@
     }
     if (spot.tags.includes("seguro"))      badges.appendChild(makeBadge(t("safer"), "badge-ok"));
     if (spot.tags.includes("fotogenico"))  badges.appendChild(makeBadge(t("photogenic"), "badge-primary"));
-    if (spot.id === state.primarySpotId)   badges.appendChild(makeBadge(t("primarySpot"), "badge-primary"));
-    if (spot.id === state.backupSpotId)    badges.appendChild(makeBadge(t("backupSpot"), "badge-accent"));
+    if (spot.id === currentPrimaryId())    badges.appendChild(makeBadge(t("primarySpot"), "badge-primary"));
+    if (spot.id === currentBackupId())     badges.appendChild(makeBadge(t("backupSpot"), "badge-accent"));
 
     header.appendChild(title);
     header.appendChild(badges);
@@ -287,14 +521,14 @@
     btnPrimary.type = "button";
     btnPrimary.className = "btn btn-primary";
     btnPrimary.textContent = t("setPrimary");
-    btnPrimary.setAttribute("aria-pressed", spot.id === state.primarySpotId ? "true" : "false");
+    btnPrimary.setAttribute("aria-pressed", spot.id === currentPrimaryId() ? "true" : "false");
     btnPrimary.addEventListener("click", () => setPrimarySpot(spot.id));
 
     const btnBackup = document.createElement("button");
     btnBackup.type = "button";
     btnBackup.className = "btn btn-accent";
     btnBackup.textContent = t("setBackup");
-    btnBackup.setAttribute("aria-pressed", spot.id === state.backupSpotId ? "true" : "false");
+    btnBackup.setAttribute("aria-pressed", spot.id === currentBackupId() ? "true" : "false");
     btnBackup.addEventListener("click", () => setBackupSpot(spot.id));
 
     actions.appendChild(btnCopy);
@@ -333,14 +567,18 @@
   }
 
   // -----------------------------------------------------------
-  // Spot principal / backup
+  // Spot principal / backup  (state plan-scoped)
   // -----------------------------------------------------------
+  function currentPrimaryId() { return state.primaryByPlan[state.currentPlanId] || null; }
+  function currentBackupId()  { return state.backupByPlan[state.currentPlanId]  || null; }
+
   function setPrimarySpot(id) {
-    if (state.primarySpotId === id) {
-      state.primarySpotId = null;
+    const cur = currentPrimaryId();
+    if (cur === id) {
+      state.primaryByPlan[state.currentPlanId] = null;
     } else {
-      state.primarySpotId = id;
-      if (state.backupSpotId === id) state.backupSpotId = null;
+      state.primaryByPlan[state.currentPlanId] = id;
+      if (currentBackupId() === id) state.backupByPlan[state.currentPlanId] = null;
     }
     persistSpots();
     renderSpots();
@@ -350,11 +588,12 @@
   }
 
   function setBackupSpot(id) {
-    if (state.backupSpotId === id) {
-      state.backupSpotId = null;
+    const cur = currentBackupId();
+    if (cur === id) {
+      state.backupByPlan[state.currentPlanId] = null;
     } else {
-      state.backupSpotId = id;
-      if (state.primarySpotId === id) state.primarySpotId = null;
+      state.backupByPlan[state.currentPlanId] = id;
+      if (currentPrimaryId() === id) state.primaryByPlan[state.currentPlanId] = null;
     }
     persistSpots();
     renderSpots();
@@ -362,38 +601,42 @@
   }
 
   function persistSpots() {
-    if (state.primarySpotId) safeStorage.set(STORAGE_KEYS.primary, state.primarySpotId);
-    else safeStorage.remove(STORAGE_KEYS.primary);
-
-    if (state.backupSpotId) safeStorage.set(STORAGE_KEYS.backup, state.backupSpotId);
-    else safeStorage.remove(STORAGE_KEYS.backup);
+    writeJSON(STORAGE_KEYS.primaryByPlan, state.primaryByPlan);
+    writeJSON(STORAGE_KEYS.backupByPlan,  state.backupByPlan);
   }
 
   function updateSummary() {
-    const primary = findSpot(state.primarySpotId);
-    const backup  = findSpot(state.backupSpotId);
-    $("#summary-base").textContent = t("base");
-    $("#summary-primary").textContent = primary ? primary.name : t("notSet");
-    $("#summary-backup").textContent  = backup  ? backup.name  : t("notSet");
+    const primary = findSpot(currentPrimaryId());
+    const backup  = findSpot(currentBackupId());
+    const plan = getCurrentPlan();
+    const baseEl = $("#summary-base");
+    if (baseEl) baseEl.textContent = (plan.base && plan.base.city) || "—";
+    const pEl = $("#summary-primary"); if (pEl) pEl.textContent = primary ? primary.name : t("notSet");
+    const bEl = $("#summary-backup");  if (bEl) bEl.textContent = backup  ? backup.name  : t("notSet");
   }
 
+  // Procura um spot no plano ACTIVO apenas. Cross-plan lookups são
+  // intencionalmente bloqueados (IDs prefixados garantem unicidade).
   function findSpot(id) {
-    return window.APP_DATA.spots.find((s) => s.id === id);
+    if (!id) return undefined;
+    const plan = getCurrentPlan();
+    return (plan.spots || []).find((s) => s.id === id);
   }
 
   // -----------------------------------------------------------
   // Spot-adjusted phase times
   //
-  // Cada fase tem um tUTC genérico (média da região de León). Cada spot
-  // pode ter `phaseOffsets` (segundos) que ajustam o timing relativamente
-  // à referência. Quando o Spot Principal está definido, todos os timings
+  // Cada plano tem o seu próprio array de fases (`plan.phases[].tUTC`).
+  // Cada spot pode ter `phaseOffsets` (segundos) relativos a essa
+  // referência. Quando o Spot Principal está definido, todos os timings
   // (countdown, cues de áudio, lista de fases) usam os valores ajustados.
   // -----------------------------------------------------------
   function adjustedPhaseTimeMs(code, spotId) {
-    const phase = (window.APP_DATA.phases || []).find((p) => p.code === code);
+    const plan = getCurrentPlan();
+    const phase = (plan.phases || []).find((p) => p.code === code);
     if (!phase || !phase.tUTC) return null;
     let ms = new Date(phase.tUTC).getTime();
-    const id = spotId !== undefined ? spotId : state.primarySpotId;
+    const id = spotId !== undefined ? spotId : currentPrimaryId();
     if (id) {
       const spot = findSpot(id);
       const off = spot && spot.phaseOffsets && spot.phaseOffsets[code];
@@ -439,7 +682,8 @@
     const linkSv = $("#streetview-open-sv");
     if (!panel || !frame) return;
 
-    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    const primaryId = currentPrimaryId();
+    const spot = primaryId ? findSpot(primaryId) : null;
     if (!spot || !spot.coords || spot.coords.length < 2) {
       panel.classList.add("hidden");
       // Liberta a iframe para não consumir rede em background.
@@ -491,7 +735,7 @@
     const grid = $("#hotels-grid");
     grid.innerHTML = "";
 
-    window.APP_DATA.hotels.forEach((h) => {
+    (getCurrentPlan().hotels || []).forEach((h) => {
       const card = document.createElement("article");
       card.className = "card hotel-card";
 
@@ -523,6 +767,10 @@
 
   // -----------------------------------------------------------
   // Render: Plano do dia (timeline)
+  //
+  // O texto pode conter {base}/{region} que são substituídos pelo plano
+  // activo em tempo de render. Permite manter um único timeline para
+  // ambos os planos.
   // -----------------------------------------------------------
   function renderTimeline() {
     const ol = $("#timeline");
@@ -534,15 +782,15 @@
 
       const time = document.createElement("span");
       time.className = "timeline-time";
-      time.textContent = item.time;
+      time.textContent = substituteBase(item.time);
 
       const title = document.createElement("span");
       title.className = "timeline-title";
-      title.textContent = item.title;
+      title.textContent = substituteBase(item.title);
 
       const detail = document.createElement("span");
       detail.className = "timeline-detail";
-      detail.textContent = item.detail;
+      detail.textContent = substituteBase(item.detail);
 
       li.appendChild(time);
       li.appendChild(title);
@@ -556,23 +804,31 @@
   // -----------------------------------------------------------
   function renderWeatherOptions() {
     const sel = $("#weather-select");
-    const prev = sel.value;
+    const opts = (getCurrentPlan().weatherOptions || []);
     sel.innerHTML = "";
-    window.APP_DATA.weatherOptions.forEach((opt) => {
+    opts.forEach((opt) => {
       const o = document.createElement("option");
       o.value = opt.value;
       o.textContent = opt.label;
       sel.appendChild(o);
     });
-    sel.value = prev || state.weather;
-    state.weather = sel.value;
+    // Estado persistido para este plano; fallback ao primeiro option.
+    let cur = state.weatherByPlan[state.currentPlanId];
+    if (!cur || !opts.some((o) => o.value === cur)) {
+      cur = opts[0] ? opts[0].value : "clear";
+      state.weatherByPlan[state.currentPlanId] = cur;
+      writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
+    }
+    sel.value = cur;
     updateWeatherRecommendation();
   }
 
   function renderDecisionTable() {
     const tbody = $("#decision-body");
     tbody.innerHTML = "";
-    window.APP_DATA.weatherOptions.forEach((opt) => {
+    const plan = getCurrentPlan();
+    const matrix = plan.decisionMatrix || {};
+    (plan.weatherOptions || []).forEach((opt) => {
       const tr = document.createElement("tr");
       tr.dataset.weather = opt.value;
 
@@ -580,7 +836,7 @@
       tdCond.textContent = opt.label;
 
       const tdReco = document.createElement("td");
-      const mapEntry = window.APP_DATA.decisionMatrix[opt.value];
+      const mapEntry = matrix[opt.value];
       const spot = mapEntry ? findSpot(mapEntry.spotId) : null;
       tdReco.innerHTML = `<strong>${spot ? escape(spot.name) : "—"}</strong>` +
                          (mapEntry ? `<br><span class="card-section">${escape(mapEntry.reason)}</span>` : "");
@@ -593,15 +849,19 @@
   }
 
   function highlightDecisionRow() {
+    const cur = state.weatherByPlan[state.currentPlanId];
     $$("#decision-body tr").forEach((tr) => {
-      tr.classList.toggle("is-active", tr.dataset.weather === state.weather);
+      tr.classList.toggle("is-active", tr.dataset.weather === cur);
     });
   }
 
   function updateWeatherRecommendation() {
-    const entry = window.APP_DATA.decisionMatrix[state.weather];
     const reco = $("#weather-reco");
-    if (!entry || !reco) return;
+    if (!reco) return;
+    const plan = getCurrentPlan();
+    const cur = state.weatherByPlan[state.currentPlanId];
+    const entry = (plan.decisionMatrix || {})[cur];
+    if (!entry) { reco.textContent = ""; return; }
     const spot = findSpot(entry.spotId);
     if (!spot) { reco.textContent = ""; return; }
 
@@ -671,7 +931,16 @@
 
   // -----------------------------------------------------------
   // Mapa (Leaflet) com fallback
+  //
+  // Estratégia para suportar troca de plano sem partir o Leaflet:
+  //   - Uma só instância do mapa (criada uma vez em initMap).
+  //   - Os marcadores vivem num L.layerGroup; em mudança de plano,
+  //     limpa-se o group e re-adicionam-se os markers do novo plano.
+  //   - Em failure (Leaflet não carregou), cai para a mensagem de fallback.
   // -----------------------------------------------------------
+  let mapInstance = null;
+  let markerLayer = null;
+
   function initMap() {
     const mapEl = $("#map");
     const fallback = $("#map-fallback");
@@ -684,37 +953,56 @@
     }
 
     try {
-      const center = [42.5987, -5.5671]; // León
-      const map = L.map(mapEl, { scrollWheelZoom: false }).setView(center, 9);
+      const plan = getCurrentPlan();
+      const center = (plan.base && plan.base.coords) || [42.5987, -5.5671];
+      mapInstance = L.map(mapEl, { scrollWheelZoom: false }).setView(center, 9);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 18,
         attribution: "© OpenStreetMap"
-      }).addTo(map);
+      }).addTo(mapInstance);
 
-      // Marker León
-      const leonMarker = L.marker(center).addTo(map).bindPopup("León (base)");
-
-      // Markers para spots
-      const markers = [leonMarker];
-      window.APP_DATA.spots.forEach((s) => {
-        if (!s.coords) return;
-        markers.push(L.marker(s.coords).addTo(map).bindPopup(`<strong>${escape(s.name)}</strong>`));
-      });
-
-      // Auto-fit a todos os marcadores, com zoom máximo limitado para
-      // não ficar demasiado próximo quando os spots estão todos juntos
-      // perto de León. Quando há spots distantes (ex.: Caxado, Galiza),
-      // o mapa zoom-out automaticamente para os incluir.
-      if (markers.length > 1) {
-        const group = L.featureGroup(markers);
-        map.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 9 });
-      }
+      markerLayer = L.layerGroup().addTo(mapInstance);
+      refreshMapMarkers();
     } catch (err) {
       console.warn("Map init failed:", err);
       mapEl.classList.add("hidden");
       fallback.classList.remove("hidden");
     }
+  }
+
+  // Limpa e re-adiciona os markers a partir do plano activo.
+  // Chamado em troca de plano. Sem efeito se Leaflet falhou.
+  function refreshMapMarkers() {
+    if (!mapInstance || !markerLayer) return;
+    try {
+      markerLayer.clearLayers();
+
+      const plan = getCurrentPlan();
+      const base = (plan.base && plan.base.coords) || null;
+      const baseLabel = ((plan.base && plan.base.city) || "") + " (base)";
+      const markers = [];
+
+      if (base) {
+        const baseMarker = L.marker(base).bindPopup(baseLabel);
+        markerLayer.addLayer(baseMarker);
+        markers.push(baseMarker);
+      }
+
+      (plan.spots || []).forEach((s) => {
+        if (!s.coords) return;
+        const m = L.marker(s.coords).bindPopup(`<strong>${escape(s.name)}</strong>`);
+        markerLayer.addLayer(m);
+        markers.push(m);
+      });
+
+      if (markers.length > 1) {
+        const group = L.featureGroup(markers);
+        mapInstance.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 9 });
+      } else if (base) {
+        mapInstance.setView(base, 9);
+      }
+    } catch (e) { /* ignore */ }
   }
 
   // -----------------------------------------------------------
@@ -854,9 +1142,10 @@
     if (!ol) return;
     ol.innerHTML = "";
 
-    const primary = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    const primaryId = currentPrimaryId();
+    const primary = primaryId ? findSpot(primaryId) : null;
 
-    window.APP_DATA.phases.forEach((p) => {
+    (getCurrentPlan().phases || []).forEach((p) => {
       const li = document.createElement("li");
       li.className = "phase-item";
       if (p.code === "C2" || p.code === "Max" || p.code === "C3") li.classList.add("is-totality");
@@ -895,13 +1184,14 @@
   function renderTimingsNotice() {
     const el = $("#timings-notice");
     if (!el) return;
-    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    const primaryId = currentPrimaryId();
+    const spot = primaryId ? findSpot(primaryId) : null;
     if (spot) {
       el.textContent = t("timingsAdjusted") + ": " + spot.name;
       el.classList.add("is-adjusted");
       el.classList.remove("is-generic");
     } else {
-      el.textContent = t("timingsGeneric");
+      el.textContent = t("timingsGenericTpl", { region: planRegion(getCurrentPlan()) });
       el.classList.add("is-generic");
       el.classList.remove("is-adjusted");
     }
@@ -968,16 +1258,18 @@
   function updateCountdown() {
     const el = $("#countdown");
     const val = $("#countdown-value");
-    if (!el || !val || !window.APP_DATA.eclipse) return;
+    if (!el || !val) return;
+    const plan = getCurrentPlan();
+    if (!plan.eclipse) return;
 
     // Usa timings ajustados ao Spot Principal quando definido,
-    // senão cai nos valores genéricos da região.
+    // senão cai nos valores genéricos do plano (eclipse.totality*UTC).
     const c2 = adjustedPhaseTimeMs("C2");
     const c3 = adjustedPhaseTimeMs("C3");
     const startMs = c2 != null ? c2
-                                : new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+                                : new Date(plan.eclipse.totalityStartUTC).getTime();
     const endMs   = c3 != null ? c3
-                                : new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
+                                : new Date(plan.eclipse.totalityEndUTC).getTime();
     const now = Date.now();
 
     el.classList.remove("is-active", "is-done");
@@ -1017,8 +1309,11 @@
   //   "atrasados" se ainda estiverem dentro da sua janela de catchup.
   //   Cues críticos (C3) têm staleText alternativo de segurança.
   // - sessionStorage para conjunto de cues já disparados (sobrevive
-  //   a refresh dentro de uma janela de catchup).
+  //   a refresh dentro de uma janela de catchup). É plan-scoped:
+  //   { leon: [ids], caxado: [ids] } — trocar plano carrega o set correcto.
   // - Visibility/focus → tick imediato para recuperar de suspensão.
+  // - Substituição {base}/{region} em runtime — permite partilhar texto
+  //   entre planos com cidades diferentes.
   // -----------------------------------------------------------
   const AUDIO_FIRED_KEY = "eclipse2026.audioFired";
 
@@ -1040,15 +1335,45 @@
           && typeof window.SpeechSynthesisUtterance === "function";
     },
 
-    init() {
-      // Restaurar conjunto de cues disparados (sobrevive a refresh).
+    // Lê o objecto plan-scoped do sessionStorage.
+    readAllFired() {
       try {
         const raw = window.sessionStorage && window.sessionStorage.getItem(AUDIO_FIRED_KEY);
-        if (raw) {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) arr.forEach((id) => this.state.fired.add(id));
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (e) { return {}; }
+    },
+
+    writeAllFired(obj) {
+      try {
+        if (window.sessionStorage) {
+          window.sessionStorage.setItem(AUDIO_FIRED_KEY, JSON.stringify(obj));
         }
       } catch (e) { /* ignore */ }
+    },
+
+    // Persiste o Set actual no namespace do plano ACTIVO.
+    saveFiredForCurrentPlan() {
+      const all = this.readAllFired();
+      all[state.currentPlanId] = Array.from(this.state.fired);
+      this.writeAllFired(all);
+    },
+
+    // Carrega o Set guardado para o plano ACTIVO (chamado em init e setPlan).
+    loadFiredForCurrentPlan() {
+      this.state.fired = new Set();
+      const all = this.readAllFired();
+      const arr = all[state.currentPlanId];
+      if (Array.isArray(arr)) arr.forEach((id) => this.state.fired.add(id));
+    },
+
+    // Compatibilidade com chamadas antigas que tocavam num "saveFired".
+    saveFired() { this.saveFiredForCurrentPlan(); },
+
+    init() {
+      // Restaurar conjunto de cues disparados do plano actual.
+      this.loadFiredForCurrentPlan();
 
       // Em Chrome, getVoices() retorna [] no primeiro call e dispara este evento.
       if (this.isSupported()) {
@@ -1082,17 +1407,6 @@
       this.renderStatus();
       this.renderCueList();
       this.renderNextCue();
-    },
-
-    saveFired() {
-      try {
-        if (window.sessionStorage) {
-          window.sessionStorage.setItem(
-            AUDIO_FIRED_KEY,
-            JSON.stringify(Array.from(this.state.fired))
-          );
-        }
-      } catch (e) { /* ignore */ }
     },
 
     toggleActivate() {
@@ -1180,11 +1494,14 @@
 
     cueText(cue, stale) {
       const isPt = state.lang === "pt";
+      let raw;
       if (stale) {
-        return (isPt ? cue.staleTextPt : cue.staleTextEn) ||
-               (isPt ? cue.textPt : cue.textEn);
+        raw = (isPt ? cue.staleTextPt : cue.staleTextEn) ||
+              (isPt ? cue.textPt : cue.textEn);
+      } else {
+        raw = isPt ? cue.textPt : cue.textEn;
       }
-      return isPt ? cue.textPt : cue.textEn;
+      return substituteBase(raw);
     },
 
     tick() {
@@ -1381,18 +1698,24 @@
   // -----------------------------------------------------------
   // Meteorologia (Open-Meteo)
   // -----------------------------------------------------------
-  // Cache em localStorage:
-  //   { updatedAt: ISO, spots: { spotId: forecast | { error } } }
+  // Cache em localStorage (plan-scoped):
+  //   { leon:   { updatedAt: ISO, spots: { spotId: forecast | { error } } },
+  //     caxado: { updatedAt: ISO, spots: { ... } } }
   function readMeteoCache() {
     if (state.meteoCache) return state.meteoCache;
     try {
       const raw = safeStorage.get(STORAGE_KEYS.meteo);
       if (raw) {
-        state.meteoCache = JSON.parse(raw);
-        return state.meteoCache;
+        const parsed = JSON.parse(raw);
+        // Aceita formato novo (plan-scoped); rejeita formato antigo.
+        if (parsed && typeof parsed === "object" && !parsed.spots) {
+          state.meteoCache = parsed;
+          return state.meteoCache;
+        }
       }
     } catch (e) { /* ignore */ }
-    return null;
+    state.meteoCache = {};
+    return state.meteoCache;
   }
 
   function writeMeteoCache(cache) {
@@ -1400,8 +1723,16 @@
     safeStorage.set(STORAGE_KEYS.meteo, JSON.stringify(cache));
   }
 
+  // Devolve a cache do plano ACTIVO (ou null se não existir ainda).
+  function getCurrentMeteoCache() {
+    const all = readMeteoCache() || {};
+    return all[state.currentPlanId] || null;
+  }
+
   function daysUntilEclipse() {
-    const ecl = new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+    const plan = getCurrentPlan();
+    if (!plan.eclipse) return Infinity;
+    const ecl = new Date(plan.eclipse.totalityStartUTC).getTime();
     return Math.ceil((ecl - Date.now()) / 86400000);
   }
 
@@ -1419,6 +1750,10 @@
     }
   }
 
+  // Guarda do plano para descartar respostas se o utilizador trocou de plano
+  // durante o fetch (race condition).
+  let meteoRequestPlanId = null;
+
   async function refreshMeteo() {
     const btn = $("#btn-refresh-meteo");
     const status = $("#meteo-status");
@@ -1428,12 +1763,16 @@
     btn.textContent = t("weatherLoading");
     status.textContent = "";
 
+    const startedAtPlan = state.currentPlanId;
+    meteoRequestPlanId = startedAtPlan;
+
     const days = daysUntilEclipse();
     const outOfRange = days > window.APP_DATA.meteo.forecastHorizonDays;
 
     try {
+      const planSpots = (getCurrentPlan().spots || []);
       const results = await Promise.all(
-        window.APP_DATA.spots.map((s) =>
+        planSpots.map((s) =>
           fetchSpotForecast(s).then(
             (data) => ({ id: s.id, data }),
             (err)  => ({ id: s.id, error: err.message || String(err) })
@@ -1441,9 +1780,17 @@
         )
       );
 
-      const cache = { updatedAt: new Date().toISOString(), spots: {} };
-      results.forEach((r) => { cache.spots[r.id] = r.error ? { error: r.error } : r.data; });
-      writeMeteoCache(cache);
+      // Se o utilizador mudou de plano durante o fetch, ignorar resultados.
+      if (state.currentPlanId !== startedAtPlan) {
+        return;
+      }
+
+      const allCache = readMeteoCache() || {};
+      allCache[startedAtPlan] = { updatedAt: new Date().toISOString(), spots: {} };
+      results.forEach((r) => {
+        allCache[startedAtPlan].spots[r.id] = r.error ? { error: r.error } : r.data;
+      });
+      writeMeteoCache(allCache);
 
       renderMeteo();
 
@@ -1455,10 +1802,14 @@
       }
     } catch (err) {
       console.warn("Meteo refresh failed:", err);
-      status.textContent = t("weatherError");
+      if (state.currentPlanId === startedAtPlan) {
+        status.textContent = t("weatherError");
+      }
     } finally {
-      btn.disabled = false;
-      btn.textContent = btn.dataset.prev || t("refreshForecast");
+      if (state.currentPlanId === startedAtPlan) {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.prev || t("refreshForecast");
+      }
     }
   }
 
@@ -1540,7 +1891,7 @@
     if (!grid) return;
     grid.innerHTML = "";
 
-    const cache = readMeteoCache();
+    const cache = getCurrentMeteoCache();
     if (!cache || !cache.spots) {
       statusEl.textContent = `${t("lastUpdated")}: ${t("never")}`;
       suggestEl.classList.add("hidden");
@@ -1556,8 +1907,9 @@
     statusEl.textContent = `${t("lastUpdated")}: ${formatDateTime(cache.updatedAt)}`;
 
     const classifiedByCandidates = []; // for auto-suggestion
+    const plan = getCurrentPlan();
 
-    window.APP_DATA.spots.forEach((spot) => {
+    (plan.spots || []).forEach((spot) => {
       const data = cache.spots[spot.id];
       grid.appendChild(buildMeteoCard(spot, data, classifiedByCandidates));
     });
@@ -1567,8 +1919,9 @@
     //   - caso contrário, usa a média regional (todos os spots disponíveis)
     let chosenCls = null;
     let chosenLabel = "";
-    if (state.primarySpotId) {
-      const c = classifiedByCandidates.find((c) => c.spotId === state.primarySpotId);
+    const primaryId = currentPrimaryId();
+    if (primaryId) {
+      const c = classifiedByCandidates.find((c) => c.spotId === primaryId);
       if (c && c.cls) {
         chosenCls = c.cls;
         chosenLabel = state.lang === "pt"
@@ -1600,7 +1953,7 @@
 
       const text = document.createElement("p");
       text.className = "meteo-suggestion-text";
-      const matrixLabel = (window.APP_DATA.weatherOptions.find(o => o.value === chosenCls.mapTo) || {}).label || chosenCls.mapTo;
+      const matrixLabel = ((plan.weatherOptions || []).find((o) => o.value === chosenCls.mapTo) || {}).label || chosenCls.mapTo;
       text.innerHTML =
         `<strong>${escape(t("weatherSuggestion"))}:</strong> ${escape(matrixLabel)} ` +
         `<span class="meteo-suggestion-note">(${escape(t(chosenCls.key))} — ${escape(chosenLabel)})</span>`;
@@ -1724,7 +2077,8 @@
     const valid = Array.from(sel.options).some((o) => o.value === matrixValue);
     if (!valid) return;
     sel.value = matrixValue;
-    state.weather = matrixValue;
+    state.weatherByPlan[state.currentPlanId] = matrixValue;
+    writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
     updateWeatherRecommendation();
     highlightDecisionRow();
     // Scroll to plan section so user sees the effect

@@ -1,85 +1,40 @@
 /*
  * data.js
  *
- * Conteúdo editável da aplicação (spots, hotéis, plano do dia,
- * checklist, matriz de decisão, notas e traduções).
+ * Conteúdo editável da aplicação.
  *
- * Para alterar/acrescentar conteúdo basta editar este ficheiro.
- * Todos os textos principais estão em PT (com fallback EN simples).
+ * Estrutura:
+ *   - audio / audioCues / checklist / expectations / notes / timeline / meteo:
+ *     conteúdo PARTILHADO entre planos. Os textos podem usar {base} (substituído
+ *     pelo nome da cidade-base do plano activo) e {region} (nome da região).
+ *
+ *   - plans.leon / plans.caxado:
+ *     conteúdo ESPECÍFICO de cada plano (base, eclipse, fases, spots, hotéis,
+ *     matriz de decisão, opções de meteo).
+ *
+ *   - i18n.pt / i18n.en:
+ *     traduções (PT por defeito).
+ *
+ * Para adicionar/alterar conteúdo basta editar este ficheiro e correr
+ * `node build-bundle.js` para regenerar `eclipse-leon-2026.html`.
  */
 
 window.APP_DATA = {
 
-  // ---------- Momento da totalidade ----------
-  // Hora UTC do meio da totalidade na região de León (aprox.).
-  // 12/08/2026 ~20:30 CEST = 18:30 UTC.
-  eclipse: {
-    totalityMidUTC: "2026-08-12T18:30:00Z",
-    totalityStartUTC: "2026-08-12T18:29:00Z",
-    totalityEndUTC:   "2026-08-12T18:31:30Z",
-    sunsetLocal: "21:21",
-    note: "Horas aproximadas para a região de León. Pequenas variações (segundos a 1 min) entre spots."
-  },
-
-  // ---------- Fases do eclipse (hora local CEST, aproximadas) ----------
-  // tUTC é o timestamp ISO do momento exato (UTC) usado pelos cues de áudio.
-  // Para C4 deixamos null porque ocorre depois do pôr-do-Sol em León.
-  phases: [
-    {
-      code: "C1",
-      time: "≈ 19:30",
-      tUTC: "2026-08-12T17:30:00Z",
-      title: "Início do parcial",
-      detail: "Primeiro contacto — a Lua começa a tapar o Sol. Sol ainda relativamente alto. Óculos de eclipse já postos."
-    },
-    {
-      code: "C2",
-      time: "≈ 20:29",
-      tUTC: "2026-08-12T18:29:00Z",
-      title: "Início da totalidade",
-      detail: "Segundos antes: grãos de Baily e diamond ring. A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos."
-    },
-    {
-      code: "Max",
-      time: "≈ 20:30",
-      tUTC: "2026-08-12T18:30:00Z",
-      title: "Máximo / meio da totalidade",
-      detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol."
-    },
-    {
-      code: "C3",
-      time: "≈ 20:31",
-      tUTC: "2026-08-12T18:31:00Z",
-      title: "Fim da totalidade",
-      detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos."
-    },
-    {
-      code: "Pôr",
-      time: "≈ 21:21",
-      tUTC: "2026-08-12T19:21:00Z",
-      title: "Pôr-do-Sol em León",
-      detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui."
-    },
-    {
-      code: "C4",
-      time: "— (após o pôr-do-Sol)",
-      tUTC: null,
-      title: "Fim teórico do parcial",
-      detail: "O quarto contacto ocorre quando o Sol já não está visível em León. Sem interesse prático."
-    }
-  ],
+  // ===================================================================
+  // CONTEÚDO PARTILHADO (igual em ambos os planos)
+  // ===================================================================
 
   // ---------- Cues de áudio (Web Speech API) ----------
-  // Cada cue dispara `offsetSec` segundos antes/depois da fase indicada (refPhase).
-  // catchupSec = janela após o momento em que ainda faz sentido disparar
-  // (se o tab esteve suspenso). staleText* é falado se o cue chegou atrasado.
+  // Cada cue dispara `offsetSec` segundos antes/depois da fase indicada
+  // (refPhase = C1 | C2 | Max | C3 | Pôr). catchupSec = janela após o momento
+  // em que ainda faz sentido disparar (se o tab esteve suspenso).
+  // staleText* é falado se o cue chegou atrasado.
+  // textPt/textEn aceitam {base} → cidade-base do plano activo (ex. "León").
   audio: {
-    // Pausa entre cues no preview encadeado (ms)
     previewPauseMs: 1500,
-    // Vozes preferidas (substring; primeira que match)
     preferredVoicePt: ["Microsoft Helia", "Microsoft Duarte", "Joana", "Cristiano", "Google português"],
     preferredVoiceEn: ["Microsoft Aria", "Google UK English Female", "Samantha"],
-    // Margem (ms) depois do último cue até o app-clock parar
     clockEndMarginMs: 10 * 60 * 1000
   },
 
@@ -179,206 +134,9 @@ window.APP_DATA = {
       refPhase: "Pôr",
       offsetSec: 0,
       catchupSec: 600,
-      textPt: "Pôr do Sol em León. A observação termina. Espera vinte minutos antes de sair, para evitar trânsito.",
-      textEn: "Sunset in León. Observation ends. Wait twenty minutes before leaving to avoid traffic."
+      textPt: "Pôr do Sol em {base}. A observação termina. Espera vinte minutos antes de sair, para evitar trânsito.",
+      textEn: "Sunset in {base}. Observation ends. Wait twenty minutes before leaving to avoid traffic."
     }
-  ],
-
-  // ---------- Spots de observação ----------
-  // Coordenadas aproximadas (úteis apenas para o mapa, opcional).
-  // sun.altitude/azimuth em graus, calculados para 18:30 UTC do dia 12/08/2026.
-  // totalityDurationSec é uma estimativa baseada na distância à linha central.
-  spots: [
-    {
-      id: "candamia",
-      name: "La Candamia / Puente Castro",
-      type: "plano",                 // plano | elevado | montanha
-      distance: "near",              // near | medium | long
-      distanceLabel: "Próximo (10–15 min de León)",
-      coords: [42.5708, -5.5547],
-      why: "Campos abertos a sul de León com horizonte oeste relativamente desimpedido. Acesso fácil, perto da cidade, boa logística para chegar cedo e sair depressa.",
-      alerts: [
-        "Confirmar horizonte W/NW livre antes da totalidade",
-        "Estacionamento pode encher — chegar cedo",
-      ],
-      howToFind: "La Candamia León",
-      tags: ["seguro", "logistica"],
-      facility: 5,
-      experience: 3,
-      sun: { altitude: 7.4, azimuth: 283 },
-      totalityDurationSec: 90,
-      totalityLabel: "≈ 1m 30s",
-      // Offsets (segundos) em relação aos timings genéricos de phases[].tUTC.
-      // Candamia é a referência da região de León — todos zero exceto C2/C3
-      // que reflectem a duração da totalidade centrada no Max.
-      phaseOffsets: { C1: 0,   C2: 15,  Max: 0,   C3: -15, "Pôr": 0 }
-    },
-    {
-      id: "portillo",
-      name: "Alto del Portillo / Valdefresno",
-      type: "elevado",
-      distance: "medium",
-      distanceLabel: "Médio (30–45 min de León)",
-      coords: [42.5300, -5.5300],
-      why: "Colinas ligeiramente elevadas a sul de León. Vista mais ampla, menos obstáculos urbanos, bom compromisso entre proximidade e horizonte limpo.",
-      alerts: [
-        "Estradas secundárias — atenção ao trânsito de regresso",
-        "Pouca sombra: levar chapéu / protetor solar para a espera",
-      ],
-      howToFind: "Alto del Portillo Valdefresno León",
-      tags: ["seguro", "fotogenico"],
-      facility: 4,
-      experience: 4,
-      sun: { altitude: 7.4, azimuth: 283 },
-      totalityDurationSec: 85,
-      totalityLabel: "≈ 1m 25s",
-      // Praticamente igual a Candamia; totalidade marginalmente mais curta.
-      phaseOffsets: { C1: 0,   C2: 18,  Max: 0,   C3: -17, "Pôr": 0 }
-    },
-    {
-      id: "paramo",
-      name: "Páramo Leonés (Santa María del Páramo / Valencia de Don Juan)",
-      type: "plano",
-      distance: "medium",
-      distanceLabel: "Médio (30–45 min de León)",
-      coords: [42.3622, -5.7592],
-      why: "Planícies amplas com horizonte 360° muito limpo. Ideal se houver risco de nuvens isoladas — fácil deslocar-se em estradas paralelas para um buraco no céu.",
-      alerts: [
-        "Pouca infraestrutura — levar tudo de casa",
-        "Verão pode estar muito quente até ao pôr do Sol",
-        "Mais a sul da linha central — totalidade um pouco mais curta",
-      ],
-      howToFind: "Santa María del Páramo, León",
-      tags: ["seguro", "flexivel"],
-      facility: 4,
-      experience: 4,
-      sun: { altitude: 7.5, azimuth: 283 },
-      totalityDurationSec: 70,
-      totalityLabel: "≈ 1m 10s",
-      // ~20 km S e W de León: totalidade mais curta, pôr-do-Sol ligeiramente
-      // mais tarde (longitude mais a W ganha à latitude mais a S).
-      phaseOffsets: { C1: -10, C2: 15,  Max: -10, C3: -35, "Pôr": 20 }
-    },
-    {
-      id: "babia",
-      name: "Babia / San Emiliano",
-      type: "montanha",
-      distance: "long",
-      distanceLabel: "Longo (1h–1h20 de León)",
-      coords: [42.9508, -6.0072],
-      why: "Plateau de montanha com cenário dramático e mais próximo da linha central — totalidade mais longa. Opção 'wow' para fotografia paisagística.",
-      alerts: [
-        "Tempo em montanha pode mudar depressa — risco de nuvens",
-        "Estrada de regresso à noite pode ser longa",
-        "Confirmar horizonte W/NW sem montanhas a tapar",
-      ],
-      howToFind: "San Emiliano Babia León",
-      tags: ["fotogenico", "wow"],
-      facility: 2,
-      experience: 5,
-      sun: { altitude: 7.8, azimuth: 283 },
-      totalityDurationSec: 100,
-      totalityLabel: "≈ 1m 40s",
-      // ~40 km NW de León, mais perto da linha central. Umbra desloca-se
-      // E→W, por isso Max ocorre ~35s antes. Pôr-do-Sol ~3min mais tarde
-      // (longitude e latitude favoráveis).
-      phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
-    },
-    {
-      id: "caxado",
-      name: "Mirador Monte Caxado (Galiza)",
-      type: "montanha",
-      distance: "long",
-      distanceLabel: "Muito longo (≈ 3h de carro de León)",
-      coords: [43.4744, -7.7311],
-      why: "Mirador panorâmico a ~1037 m no NW da Galiza (As Pontes / Vilalba). Microclima Atlântico totalmente diferente do interior castelhano — útil como plano B se houver risco de nuvens em toda a região de León. Próximo da linha central na entrada da umbra em Espanha (totalidade ligeiramente mais longa que em León). Sol um pouco mais alto porque a totalidade acontece mais cedo em relação ao pôr-do-sol local.",
-      alerts: [
-        "≈ 3h de carro desde León — considerar dormir na zona se for o spot escolhido",
-        "Meteorologia atlântica — variável, vento e nuvens marítimas possíveis",
-        "Acesso por estradas de montanha; confirmar estacionamento no mirador",
-        "Cobertura Street View pode ser limitada — usar 'Abrir no Google Maps' para confirmar acesso",
-      ],
-      howToFind: "Mirador Monte Caxado As Pontes Galicia",
-      tags: ["fotogenico", "wow", "backup_meteo"],
-      facility: 1,
-      experience: 5,
-      sun: { altitude: 7.6, azimuth: 283 },
-      totalityDurationSec: 110,
-      totalityLabel: "≈ 1m 50s",
-      // Galiza está a ~270 km NW de León. A umbra desloca-se de NW para
-      // SE em Espanha, por isso a totalidade ocorre ~90s ANTES que em
-      // León. O pôr-do-sol local é ~14 min mais tarde (Δlon ≈ 2°W +
-      // latitude ligeiramente mais alta no Verão).
-      phaseOffsets: { C1: -85, C2: -85, Max: -90, C3: -95, "Pôr": 840 }
-    }
-  ],
-
-  // ---------- Hotéis em León ----------
-  hotels: [
-    {
-      name: "Barceló León Conde Luna",
-      notes: ["Central", "Fácil acesso de carro", "Bom para família", "Boa saída para sul"]
-    },
-    {
-      name: "NH Collection León Plaza Mayor",
-      notes: ["Central", "Junto ao centro histórico", "Bom para família"]
-    },
-    {
-      name: "Silken Luis de León",
-      notes: ["Boa saída para sul", "Estacionamento útil", "Tranquilo"]
-    },
-    {
-      name: "AC Hotel León San Antonio",
-      notes: ["Fácil acesso de carro", "Boa ligação a vias rápidas", "Bom para família"]
-    }
-  ],
-
-  // ---------- Plano do dia (Eclipse Day) ----------
-  // Blocos da timeline. Hora apenas indicativa.
-  timeline: [
-    {
-      time: "16:00 – 17:00",
-      title: "Decisão com base no tempo",
-      detail: "Última verificação de previsão (cloud check). Escolher Spot Principal vs Backup. Confirmar com o grupo."
-    },
-    {
-      time: "17:30 – 18:30",
-      title: "Saída / viagem",
-      detail: "Sair de León para o spot escolhido. Margem para trânsito, paragens e estacionamento."
-    },
-    {
-      time: "19:30",
-      title: "Chegar e montar",
-      detail: "Instalar tapete/cadeiras, identificar horizonte W/NW, preparar óculos de eclipse, ajustar binóculos com filtro adequado."
-    },
-    {
-      time: "20:27 – 20:33",
-      title: "Janela de totalidade (aprox.)",
-      detail: "Totalidade dura poucos minutos. Durante a totalidade pode-se olhar sem filtros — fora dela, NUNCA olhar para o Sol sem proteção adequada."
-    },
-    {
-      time: "20:30 – 21:00",
-      title: "Ficar mais 20–30 min",
-      detail: "Evitar a saída em massa logo após a totalidade. Aproveitar para hidratar, arrumar com calma e deixar o trânsito escoar."
-    }
-  ],
-
-  // ---------- Matriz de decisão ----------
-  // weather -> id do spot recomendado
-  decisionMatrix: {
-    clear:    { spotId: "candamia", reason: "Céu limpo — não precisa de altitude extra. La Candamia oferece proximidade e logística simples." },
-    haze:     { spotId: "portillo", reason: "Com haze/horizonte sujo, ganhar altitude ajuda. Alto del Portillo dá vista mais limpa." },
-    clouds:   { spotId: "paramo",   reason: "Risco de nuvens isoladas — planícies do Páramo permitem ajustar a posição rapidamente." },
-    mountain: { spotId: "babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." },
-    atlantic: { spotId: "caxado",   reason: "Interior castelhano com nebulosidade generalizada — fugir para o Atlântico. Mirador Monte Caxado (Galiza) está noutro sistema meteorológico e perto da linha central. ~3h de viagem desde León." }
-  },
-
-  weatherOptions: [
-    { value: "clear",    label: "Céu limpo" },
-    { value: "haze",     label: "Algum haze / horizonte sujo" },
-    { value: "clouds",   label: "Risco de nuvens isoladas" },
-    { value: "mountain", label: "Estável e quer foco em fotos" },
-    { value: "atlantic", label: "Interior castelhano com mau tempo geral — fuga para Galiza" }
   ],
 
   // ---------- Checklist ----------
@@ -428,13 +186,51 @@ window.APP_DATA = {
     }
   ],
 
+  // ---------- Notas importantes ----------
+  notes: [
+    "Precisas de horizonte W/NW desimpedido — o Sol estará baixo no horizonte.",
+    "Chegar cedo por causa do trânsito e estacionamento.",
+    "Totalidade só dentro da faixa central; fora dela é eclipse parcial.",
+    "Nunca olhar para o Sol sem proteção adequada — exceto durante os poucos minutos de totalidade.",
+    "Confirmar previsão meteorológica nas horas antes; ter sempre um Spot Backup."
+  ],
+
+  // ---------- Plano do dia (genérico) ----------
+  // {base} é substituído pela cidade-base do plano activo.
+  timeline: [
+    {
+      time: "16:00 – 17:00",
+      title: "Decisão com base no tempo",
+      detail: "Última verificação de previsão (cloud check). Escolher Spot Principal vs Backup. Confirmar com o grupo."
+    },
+    {
+      time: "17:30 – 18:30",
+      title: "Saída / viagem",
+      detail: "Sair de {base} para o spot escolhido. Margem para trânsito, paragens e estacionamento."
+    },
+    {
+      time: "19:30",
+      title: "Chegar e montar",
+      detail: "Instalar tapete/cadeiras, identificar horizonte W/NW, preparar óculos de eclipse, ajustar binóculos com filtro adequado."
+    },
+    {
+      time: "20:27 – 20:33",
+      title: "Janela de totalidade (aprox.)",
+      detail: "Totalidade dura poucos minutos. Durante a totalidade pode-se olhar sem filtros — fora dela, NUNCA olhar para o Sol sem proteção adequada."
+    },
+    {
+      time: "20:30 – 21:00",
+      title: "Ficar mais 20–30 min",
+      detail: "Evitar a saída em massa logo após a totalidade. Aproveitar para hidratar, arrumar com calma e deixar o trânsito escoar."
+    }
+  ],
+
   // ---------- Meteorologia (Open-Meteo) ----------
-  // Open-Meteo é gratuito e não precisa de chave. Janela de previsão: 16 dias.
   meteo: {
     endpoint: "https://api.open-meteo.com/v1/forecast",
     forecastHorizonDays: 16,
     eclipseDateLocal: "2026-08-12",
-    eclipseHourLocal: 20,                // 20:00 CEST (hora da totalidade)
+    eclipseHourLocal: 20,
     timezone: "Europe/Madrid",
     hourlyVars: [
       "cloud_cover",
@@ -448,26 +244,365 @@ window.APP_DATA = {
     ]
   },
 
-  // ---------- Notas importantes ----------
-  notes: [
-    "Precisas de horizonte W/NW desimpedido — o Sol estará baixo no horizonte.",
-    "Chegar cedo por causa do trânsito e estacionamento.",
-    "Totalidade só dentro da faixa central; fora dela é eclipse parcial.",
-    "Nunca olhar para o Sol sem proteção adequada — exceto durante os poucos minutos de totalidade.",
-    "Confirmar previsão meteorológica nas horas antes; ter sempre um Spot Backup."
-  ],
+  // ===================================================================
+  // PLANOS (Plan A — León / Plan B — Caxado)
+  // ===================================================================
 
-  // ---------- Traduções (PT por defeito, EN parcial) ----------
+  plans: {
+
+    // -------------------------------------------------------------
+    // Plan A — León (Castilla y León, interior)
+    // -------------------------------------------------------------
+    leon: {
+      id: "leon",
+      namePt: "Plano A — León (Castilla)",
+      nameEn: "Plan A — León (Castile)",
+      base: {
+        city: "León",
+        coords: [42.5987, -5.5671],
+        regionPt: "Castilla y León",
+        regionEn: "Castile and León"
+      },
+
+      // Hora UTC do meio da totalidade na região de León (aprox.).
+      eclipse: {
+        totalityMidUTC:   "2026-08-12T18:30:00Z",
+        totalityStartUTC: "2026-08-12T18:29:00Z",
+        totalityEndUTC:   "2026-08-12T18:31:30Z",
+        sunsetLocal: "21:21",
+        notePt: "Horas aproximadas para a região de León. Variações entre spots de segundos a ~1 min.",
+        noteEn: "Approximate times for the León region. Inter-spot variations of seconds to ~1 min."
+      },
+
+      // Fases. tUTC é o timestamp ISO exato para os cues de áudio.
+      // C4 = null porque ocorre depois do pôr-do-sol em León.
+      phases: [
+        { code: "C1",  time: "≈ 19:30", tUTC: "2026-08-12T17:30:00Z",
+          title: "Início do parcial",
+          detail: "Primeiro contacto — a Lua começa a tapar o Sol. Sol ainda relativamente alto. Óculos de eclipse já postos." },
+        { code: "C2",  time: "≈ 20:29", tUTC: "2026-08-12T18:29:00Z",
+          title: "Início da totalidade",
+          detail: "Segundos antes: grãos de Baily e diamond ring. A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos." },
+        { code: "Max", time: "≈ 20:30", tUTC: "2026-08-12T18:30:00Z",
+          title: "Máximo / meio da totalidade",
+          detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol." },
+        { code: "C3",  time: "≈ 20:31", tUTC: "2026-08-12T18:31:00Z",
+          title: "Fim da totalidade",
+          detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos." },
+        { code: "Pôr", time: "≈ 21:21", tUTC: "2026-08-12T19:21:00Z",
+          title: "Pôr-do-Sol em León",
+          detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui." },
+        { code: "C4",  time: "— (após o pôr-do-Sol)", tUTC: null,
+          title: "Fim teórico do parcial",
+          detail: "O quarto contacto ocorre quando o Sol já não está visível em León. Sem interesse prático." }
+      ],
+
+      // Spots (IDs prefixados com plano para garantir unicidade global).
+      // phaseOffsets em segundos relativos a phases[].tUTC acima.
+      spots: [
+        {
+          id: "leon-candamia",
+          name: "La Candamia / Puente Castro",
+          type: "plano",
+          distance: "near",
+          distanceLabel: "Próximo (10–15 min de León)",
+          coords: [42.5708, -5.5547],
+          why: "Campos abertos a sul de León com horizonte oeste relativamente desimpedido. Acesso fácil, perto da cidade, boa logística para chegar cedo e sair depressa.",
+          alerts: [
+            "Confirmar horizonte W/NW livre antes da totalidade",
+            "Estacionamento pode encher — chegar cedo"
+          ],
+          howToFind: "La Candamia León",
+          tags: ["seguro", "logistica"],
+          facility: 5,
+          experience: 3,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 90,
+          totalityLabel: "≈ 1m 30s",
+          phaseOffsets: { C1: 0, C2: 15, Max: 0, C3: -15, "Pôr": 0 }
+        },
+        {
+          id: "leon-portillo",
+          name: "Alto del Portillo / Valdefresno",
+          type: "elevado",
+          distance: "medium",
+          distanceLabel: "Médio (30–45 min de León)",
+          coords: [42.5300, -5.5300],
+          why: "Colinas ligeiramente elevadas a sul de León. Vista mais ampla, menos obstáculos urbanos, bom compromisso entre proximidade e horizonte limpo.",
+          alerts: [
+            "Estradas secundárias — atenção ao trânsito de regresso",
+            "Pouca sombra: levar chapéu / protetor solar para a espera"
+          ],
+          howToFind: "Alto del Portillo Valdefresno León",
+          tags: ["seguro", "fotogenico"],
+          facility: 4,
+          experience: 4,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 85,
+          totalityLabel: "≈ 1m 25s",
+          phaseOffsets: { C1: 0, C2: 18, Max: 0, C3: -17, "Pôr": 0 }
+        },
+        {
+          id: "leon-paramo",
+          name: "Páramo Leonés",
+          type: "plano",
+          distance: "medium",
+          distanceLabel: "Médio (30–45 min de León, S/SW)",
+          coords: [42.3622, -5.7592],
+          why: "Planícies amplas com horizonte 360° muito limpo. Ideal se houver risco de nuvens isoladas — fácil deslocar-se em estradas paralelas para um buraco no céu.",
+          alerts: [
+            "Pouca sombra e pouca infraestrutura — preparar abastecimento",
+            "Considerar mobilidade: ter plano B para mudar de sítio rapidamente"
+          ],
+          howToFind: "Santa María del Páramo Valencia de Don Juan",
+          tags: ["seguro", "logistica"],
+          facility: 3,
+          experience: 4,
+          sun: { altitude: 7.5, azimuth: 283 },
+          totalityDurationSec: 70,
+          totalityLabel: "≈ 1m 10s",
+          phaseOffsets: { C1: -10, C2: 15, Max: -10, C3: -35, "Pôr": 20 }
+        },
+        {
+          id: "leon-babia",
+          name: "Babia / San Emiliano",
+          type: "montanha",
+          distance: "long",
+          distanceLabel: "Longo (1h–1h20 de León)",
+          coords: [42.9508, -6.0072],
+          why: "Plateau de montanha com cenário dramático e mais próximo da linha central — totalidade mais longa. Opção 'wow' para fotografia paisagística.",
+          alerts: [
+            "Tempo em montanha pode mudar depressa — risco de nuvens",
+            "Estrada de regresso à noite pode ser longa",
+            "Confirmar horizonte W/NW sem montanhas a tapar"
+          ],
+          howToFind: "San Emiliano Babia León",
+          tags: ["fotogenico", "wow"],
+          facility: 2,
+          experience: 5,
+          sun: { altitude: 7.8, azimuth: 283 },
+          totalityDurationSec: 100,
+          totalityLabel: "≈ 1m 40s",
+          phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
+        }
+      ],
+
+      hotels: [
+        { name: "Barceló León Conde Luna",
+          notes: ["Central", "Fácil acesso de carro", "Bom para família", "Boa saída para sul"] },
+        { name: "NH Collection León Plaza Mayor",
+          notes: ["Central", "Junto ao centro histórico", "Bom para família"] },
+        { name: "Silken Luis de León",
+          notes: ["Boa saída para sul", "Estacionamento útil", "Tranquilo"] },
+        { name: "AC Hotel León San Antonio",
+          notes: ["Fácil acesso de carro", "Boa ligação a vias rápidas", "Bom para família"] }
+      ],
+
+      // weather -> id do spot recomendado + razão
+      decisionMatrix: {
+        clear:    { spotId: "leon-candamia", reason: "Céu limpo — não precisa de altitude extra. La Candamia oferece proximidade e logística simples." },
+        haze:     { spotId: "leon-portillo", reason: "Com haze/horizonte sujo, ganhar altitude ajuda. Alto del Portillo dá vista mais limpa." },
+        clouds:   { spotId: "leon-paramo",   reason: "Risco de nuvens isoladas — planícies do Páramo permitem ajustar a posição rapidamente." },
+        mountain: { spotId: "leon-babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." }
+      },
+
+      weatherOptions: [
+        { value: "clear",    label: "Céu limpo" },
+        { value: "haze",     label: "Algum haze / horizonte sujo" },
+        { value: "clouds",   label: "Risco de nuvens isoladas" },
+        { value: "mountain", label: "Estável e quer foco em fotos" }
+      ]
+    },
+
+    // -------------------------------------------------------------
+    // Plan B — Caxado (Galicia, costa atlântica)
+    // -------------------------------------------------------------
+    caxado: {
+      id: "caxado",
+      namePt: "Plano B — Caxado (Galiza)",
+      nameEn: "Plan B — Caxado (Galicia)",
+      base: {
+        city: "Ferrol",
+        coords: [43.4831, -8.2333],
+        regionPt: "Galiza",
+        regionEn: "Galicia"
+      },
+
+      // Galiza está ~270 km NW de León. A umbra desloca-se de NW→SE em
+      // Espanha, por isso a totalidade ocorre ~90s mais cedo. O pôr-do-sol
+      // local é ~14 min mais tarde (Δlon ≈ 2°W + lat ligeiramente mais alta).
+      eclipse: {
+        totalityMidUTC:   "2026-08-12T18:28:30Z",
+        totalityStartUTC: "2026-08-12T18:27:35Z",
+        totalityEndUTC:   "2026-08-12T18:29:25Z",
+        sunsetLocal: "21:35",
+        notePt: "Horas aproximadas para o NW da Galiza (As Pontes/Caxado). Spots costeiros vêem a totalidade ainda mais cedo.",
+        noteEn: "Approximate times for NW Galicia (As Pontes/Caxado). Coastal spots see totality slightly earlier."
+      },
+
+      // Phases. A referência do plano corresponde ao spot Mirador Monte Caxado
+      // (totalidade 110s centrada em 18:28:30 UTC).
+      phases: [
+        { code: "C1",  time: "≈ 19:28", tUTC: "2026-08-12T17:28:00Z",
+          title: "Início do parcial",
+          detail: "Primeiro contacto — a Lua começa a tapar o Sol. Ainda há ~1h de eclipse parcial antes da totalidade." },
+        { code: "C2",  time: "≈ 20:27", tUTC: "2026-08-12T18:27:35Z",
+          title: "Início da totalidade",
+          detail: "A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos. Galiza está perto da entrada da umbra em Espanha." },
+        { code: "Max", time: "≈ 20:28", tUTC: "2026-08-12T18:28:30Z",
+          title: "Máximo / meio da totalidade",
+          detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol." },
+        { code: "C3",  time: "≈ 20:29", tUTC: "2026-08-12T18:29:25Z",
+          title: "Fim da totalidade",
+          detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos." },
+        { code: "Pôr", time: "≈ 21:35", tUTC: "2026-08-12T19:35:00Z",
+          title: "Pôr-do-Sol na Galiza",
+          detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui." },
+        { code: "C4",  time: "— (após o pôr-do-Sol)", tUTC: null,
+          title: "Fim teórico do parcial",
+          detail: "O quarto contacto ocorre quando o Sol já não está visível. Sem interesse prático." }
+      ],
+
+      spots: [
+        {
+          id: "caxado-monte",
+          name: "Mirador Monte Caxado",
+          type: "montanha",
+          distance: "near",
+          distanceLabel: "Próximo (35 min de Ferrol)",
+          coords: [43.4744, -7.7311],
+          why: "Mirador panorâmico a ~1037 m no NW da Galiza (As Pontes / Vilalba). Perto da linha central na entrada da umbra em Espanha — totalidade ligeiramente mais longa. Ângulo elevado dá vista limpa do horizonte oeste.",
+          alerts: [
+            "Acesso por estradas de montanha; confirmar estacionamento no mirador",
+            "Meteorologia atlântica pode mudar depressa — variável, vento possível",
+            "Cobertura Street View pode ser limitada — usar 'Abrir no Google Maps'"
+          ],
+          howToFind: "Mirador Monte Caxado As Pontes Galicia",
+          tags: ["fotogenico", "wow"],
+          facility: 3,
+          experience: 5,
+          sun: { altitude: 7.6, azimuth: 283 },
+          totalityDurationSec: 110,
+          totalityLabel: "≈ 1m 50s",
+          // Referência do plano (offsets a zero).
+          phaseOffsets: { C1: 0, C2: 0, Max: 0, C3: 0, "Pôr": 0 }
+        },
+        {
+          id: "caxado-frouxeira",
+          name: "Mirador da Frouxeira (Valdoviño)",
+          type: "elevado",
+          distance: "near",
+          distanceLabel: "Próximo (30 min de Ferrol)",
+          coords: [43.6094, -8.1639],
+          why: "Colina costeira com vista para o Atlântico Norte. Horizonte oeste sobre o oceano — sem obstáculos. Boa opção quando o interior tem haze e a costa está limpa.",
+          alerts: [
+            "Risco de nuvens marítimas baixas (nevoeiro do Atlântico)",
+            "Vento costeiro — segurar bem o equipamento",
+            "Confirmar horizonte W sem nuvens junto ao mar"
+          ],
+          howToFind: "Mirador da Frouxeira Valdoviño",
+          tags: ["fotogenico", "seguro"],
+          facility: 4,
+          experience: 4,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 100,
+          totalityLabel: "≈ 1m 40s",
+          // ~50 km NW de Caxado, mais cedo na umbra. Pôr-do-sol +2 min
+          // (longitude mais a oeste).
+          phaseOffsets: { C1: -20, C2: -15, Max: -20, C3: -25, "Pôr": 120 }
+        },
+        {
+          id: "caxado-sanpedro",
+          name: "Monte San Pedro (A Coruña)",
+          type: "elevado",
+          distance: "medium",
+          distanceLabel: "Médio (55 min de Ferrol)",
+          coords: [43.3801, -8.4544],
+          why: "Parque urbano elevado em A Coruña com vista 360° sobre a cidade e o Atlântico. Acesso por estrada/ascensor panorâmico. Logística muito boa: hotéis e restaurantes a 10 min.",
+          alerts: [
+            "Mais a oeste — totalidade ligeiramente mais curta (~90s)",
+            "Cidade — poluição luminosa irrelevante mas trânsito possível",
+            "Estacionamento limitado no parque — chegar cedo"
+          ],
+          howToFind: "Monte San Pedro A Coruña parque",
+          tags: ["logistica", "urbano"],
+          facility: 5,
+          experience: 3,
+          sun: { altitude: 7.2, azimuth: 283 },
+          totalityDurationSec: 90,
+          totalityLabel: "≈ 1m 30s",
+          // A Coruña a SW de Caxado. Max ~15s mais cedo, pôr-do-sol +3 min.
+          phaseOffsets: { C1: -15, C2: -5, Max: -15, C3: -25, "Pôr": 200 }
+        },
+        {
+          id: "caxado-ortegal",
+          name: "Cabo Ortegal (Cariño)",
+          type: "plano",
+          distance: "medium",
+          distanceLabel: "Médio (1h de Ferrol)",
+          coords: [43.7654, -7.8740],
+          why: "Falésias dramáticas no extremo norte da Galiza, onde o Cantábrico encontra o Atlântico. Cenário 'fim do mundo' — opção mais fotogénica do plano. Sol no horizonte sobre o mar.",
+          alerts: [
+            "Vento forte e exposição — agasalhos obrigatórios",
+            "Nevoeiro marítimo possível mesmo no Verão",
+            "Estradas de montanha até ao cabo — última parte estreita",
+            "Sem qualquer infraestrutura — levar tudo"
+          ],
+          howToFind: "Cabo Ortegal Cariño A Coruña",
+          tags: ["fotogenico", "wow"],
+          facility: 1,
+          experience: 5,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 90,
+          totalityLabel: "≈ 1m 30s",
+          // N de Caxado, mais cedo na umbra. Pôr-do-sol +30s.
+          phaseOffsets: { C1: -30, C2: -20, Max: -30, C3: -40, "Pôr": 30 }
+        }
+      ],
+
+      hotels: [
+        { name: "Parador de Ferrol",
+          notes: ["Central (Ferrol)", "Histórico", "Vista para a ria", "Bom para família"] },
+        { name: "Hotel Almirante (Ferrol)",
+          notes: ["Centro de Ferrol", "Estacionamento", "Boa relação qualidade/preço"] },
+        { name: "Hesperia Finisterre (A Coruña)",
+          notes: ["Frente ao mar (A Coruña)", "~45 min de Ferrol", "Familiar"] },
+        { name: "Meliá María Pita (A Coruña)",
+          notes: ["Praia de Riazor (A Coruña)", "Central", "Bom para família"] }
+      ],
+
+      decisionMatrix: {
+        clear:    { spotId: "caxado-monte",      reason: "Céu limpo — aproveitar o mirador panorâmico a 1037 m com totalidade mais longa do plano." },
+        haze:     { spotId: "caxado-frouxeira",  reason: "Haze no interior — a costa pode estar limpa. Frouxeira oferece elevação com horizonte marítimo." },
+        clouds:   { spotId: "caxado-sanpedro",   reason: "Risco de nuvens — Monte San Pedro está na cidade, dá mobilidade rápida para mudar de spot dentro de A Coruña." },
+        mountain: { spotId: "caxado-ortegal",    reason: "Atmosfera estável e foco em fotos — Cabo Ortegal oferece o cenário mais dramático (falésias sobre o Atlântico)." }
+      },
+
+      weatherOptions: [
+        { value: "clear",    label: "Céu limpo" },
+        { value: "haze",     label: "Algum haze / horizonte sujo" },
+        { value: "clouds",   label: "Risco de nuvens isoladas" },
+        { value: "mountain", label: "Estável e quer foco em fotos" }
+      ]
+    }
+
+  },
+
+  // ===================================================================
+  // i18n (PT por defeito, EN parcial)
+  // ===================================================================
   i18n: {
     pt: {
-      appTitle: "Eclipse Solar Total — León 2026",
+      appTitle: "Eclipse Solar Total — Espanha 2026",
       appSubtitle: "12 de Agosto de 2026 · Plano de observação para a família",
+      planLabel: "Plano",
       myBase: "Base",
       primarySpot: "Spot Principal",
       backupSpot: "Spot Backup",
       notSet: "(por definir)",
-      sectionSpots: "Spots de Observação (perto de León)",
-      sectionHotels: "Hotéis em León (base recomendada)",
+      // {city} é substituído pela cidade-base do plano activo.
+      sectionSpotsTpl: "Spots de Observação (perto de {city})",
+      sectionHotelsTpl: "Hotéis em {city} (base recomendada)",
       sectionPlan: "Plano do Dia",
       sectionChecklist: "Checklist",
       sectionNotes: "Notas Importantes",
@@ -493,6 +628,7 @@ window.APP_DATA = {
       audioNoMoreCues: "Sem mais cues programados.",
       audioCuesPlanned: "Ver todos os cues planeados",
       audioMobileWarning: "No telemóvel: mantém o browser aberto e o ecrã ligado para garantir que os cues tocam. iPhone tem mais limitações que Android.",
+      audioPlanSwitched: "Plano mudou — áudio desativado por segurança. Re-activa se queres ouvir os cues do novo plano.",
       countdownLabel: "Até à totalidade",
       countdownActive: "TOTALIDADE EM CURSO",
       countdownDone: "Eclipse concluído",
@@ -506,7 +642,7 @@ window.APP_DATA = {
       totalityDuration: "Totalidade",
       approxDisclaimer: "Valores aproximados — confirmar com fontes oficiais perto da data.",
       timingsAdjusted: "Timings ajustados para",
-      timingsGeneric: "Timings: média regional (define um Spot Principal para ajustar)",
+      timingsGenericTpl: "Timings: média regional ({region}) — define um Spot Principal para ajustar",
       streetviewTitle: "Vista do Spot Principal",
       streetviewHint: "Câmara apontada na direção do Sol durante a totalidade. Em zonas rurais a vista pode cair na estrada mais próxima.",
       streetviewOpenMaps: "Abrir no Google Maps",
@@ -567,18 +703,18 @@ window.APP_DATA = {
       copied: "Copiado!",
       languageLabel: "Idioma",
       mapFallback: "Mapa indisponível — usa a lista de spots abaixo.",
-      base: "León",
       footer: "Dados editáveis em data.js. App estática — funciona offline depois de carregada."
     },
     en: {
-      appTitle: "Total Solar Eclipse — León 2026",
+      appTitle: "Total Solar Eclipse — Spain 2026",
       appSubtitle: "August 12, 2026 · Family viewing plan",
+      planLabel: "Plan",
       myBase: "Base",
       primarySpot: "Primary Spot",
       backupSpot: "Backup Spot",
       notSet: "(not set)",
-      sectionSpots: "Viewing Spots (near León)",
-      sectionHotels: "Hotels in León (recommended base)",
+      sectionSpotsTpl: "Viewing Spots (near {city})",
+      sectionHotelsTpl: "Hotels in {city} (recommended base)",
       sectionPlan: "Day Plan",
       sectionChecklist: "Checklist",
       sectionNotes: "Important Notes",
@@ -604,6 +740,7 @@ window.APP_DATA = {
       audioNoMoreCues: "No more cues scheduled.",
       audioCuesPlanned: "Show all planned cues",
       audioMobileWarning: "On mobile: keep browser open and screen on so cues play reliably. iPhone has more limitations than Android.",
+      audioPlanSwitched: "Plan changed — audio disabled for safety. Re-activate to hear the new plan's cues.",
       countdownLabel: "Until totality",
       countdownActive: "TOTALITY IN PROGRESS",
       countdownDone: "Eclipse finished",
@@ -617,7 +754,7 @@ window.APP_DATA = {
       totalityDuration: "Totality",
       approxDisclaimer: "Approximate values — verify with official sources near the date.",
       timingsAdjusted: "Timings adjusted for",
-      timingsGeneric: "Timings: regional average (set a Primary Spot to adjust)",
+      timingsGenericTpl: "Timings: regional average ({region}) — set a Primary Spot to adjust",
       streetviewTitle: "View of the Primary Spot",
       streetviewHint: "Camera oriented toward the Sun during totality. In rural areas the view may snap to the nearest road.",
       streetviewOpenMaps: "Open in Google Maps",
@@ -678,7 +815,6 @@ window.APP_DATA = {
       copied: "Copied!",
       languageLabel: "Language",
       mapFallback: "Map unavailable — use the spot list below.",
-      base: "León",
       footer: "Editable data in data.js. Static app — works offline after first load."
     }
   }

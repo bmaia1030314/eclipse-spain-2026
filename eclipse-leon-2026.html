@@ -3,7 +3,7 @@
   Eclipse Solar Total — León 2026
   Single-file build. Tudo (HTML + CSS + dados + lógica) está aqui.
   Apenas Leaflet é carregado via CDN — se falhar, o resto continua a funcionar.
-  Gerado em: 2026-05-14T17:15:24.523Z
+  Gerado em: 2026-05-14T17:36:08.703Z
 -->
 <html lang="pt-PT">
 <head>
@@ -138,6 +138,23 @@ body {
   font-weight: 600;
   color: #fff;
   margin-top: 2px;
+}
+
+.summary-card-plan { padding: 8px 14px; }
+.plan-select {
+  margin-top: 4px;
+  background: rgba(0,0,0,0.25);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  width: 100%;
+}
+.plan-select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* ---------- Countdown ---------- */
@@ -667,7 +684,7 @@ h3 {
 /* ---------- Responsive: tablet+ ---------- */
 @media (min-width: 640px) {
   .brand h1 { font-size: 1.6rem; }
-  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .summary-grid { grid-template-columns: repeat(4, 1fr); }
   .cards-grid { grid-template-columns: repeat(2, 1fr); }
   .filters { grid-template-columns: repeat(2, 1fr) auto; align-items: end; }
   .checklist { grid-template-columns: repeat(2, 1fr); }
@@ -1041,6 +1058,12 @@ h3 {
     </div>
 
     <div class="container summary-grid" aria-label="Resumo">
+      <div class="summary-card summary-card-plan">
+        <span class="summary-label" data-i18n="planLabel">Plano</span>
+        <select id="plan-select" class="plan-select" aria-label="Plano de observação">
+          <!-- Opções preenchidas por app.js a partir de window.APP_DATA.plans -->
+        </select>
+      </div>
       <div class="summary-card">
         <span class="summary-label" data-i18n="myBase">Base</span>
         <span class="summary-value" id="summary-base">León</span>
@@ -1065,7 +1088,7 @@ h3 {
 
     <!-- ============== SPOTS ============== -->
     <section id="section-spots" aria-labelledby="h-spots">
-      <h2 id="h-spots" data-i18n="sectionSpots">Spots de Observação (perto de León)</h2>
+      <h2 id="h-spots">Spots de Observação</h2>
 
       <!-- Mapa (opcional) -->
       <div id="map" aria-label="Mapa dos spots" role="region"></div>
@@ -1142,7 +1165,7 @@ h3 {
 
     <!-- ============== HOTÉIS ============== -->
     <section id="section-hotels" aria-labelledby="h-hotels">
-      <h2 id="h-hotels" data-i18n="sectionHotels">Hotéis em León (base recomendada)</h2>
+      <h2 id="h-hotels">Hotéis (base recomendada)</h2>
       <div id="hotels-grid" class="cards-grid"></div>
       <p class="disclaimer" data-i18n="hotelDisclaimer">
         Confirmar disponibilidade e estacionamento no momento da reserva.
@@ -1285,85 +1308,40 @@ h3 {
 /*
  * data.js
  *
- * Conteúdo editável da aplicação (spots, hotéis, plano do dia,
- * checklist, matriz de decisão, notas e traduções).
+ * Conteúdo editável da aplicação.
  *
- * Para alterar/acrescentar conteúdo basta editar este ficheiro.
- * Todos os textos principais estão em PT (com fallback EN simples).
+ * Estrutura:
+ *   - audio / audioCues / checklist / expectations / notes / timeline / meteo:
+ *     conteúdo PARTILHADO entre planos. Os textos podem usar {base} (substituído
+ *     pelo nome da cidade-base do plano activo) e {region} (nome da região).
+ *
+ *   - plans.leon / plans.caxado:
+ *     conteúdo ESPECÍFICO de cada plano (base, eclipse, fases, spots, hotéis,
+ *     matriz de decisão, opções de meteo).
+ *
+ *   - i18n.pt / i18n.en:
+ *     traduções (PT por defeito).
+ *
+ * Para adicionar/alterar conteúdo basta editar este ficheiro e correr
+ * `node build-bundle.js` para regenerar `eclipse-leon-2026.html`.
  */
 
 window.APP_DATA = {
 
-  // ---------- Momento da totalidade ----------
-  // Hora UTC do meio da totalidade na região de León (aprox.).
-  // 12/08/2026 ~20:30 CEST = 18:30 UTC.
-  eclipse: {
-    totalityMidUTC: "2026-08-12T18:30:00Z",
-    totalityStartUTC: "2026-08-12T18:29:00Z",
-    totalityEndUTC:   "2026-08-12T18:31:30Z",
-    sunsetLocal: "21:21",
-    note: "Horas aproximadas para a região de León. Pequenas variações (segundos a 1 min) entre spots."
-  },
-
-  // ---------- Fases do eclipse (hora local CEST, aproximadas) ----------
-  // tUTC é o timestamp ISO do momento exato (UTC) usado pelos cues de áudio.
-  // Para C4 deixamos null porque ocorre depois do pôr-do-Sol em León.
-  phases: [
-    {
-      code: "C1",
-      time: "≈ 19:30",
-      tUTC: "2026-08-12T17:30:00Z",
-      title: "Início do parcial",
-      detail: "Primeiro contacto — a Lua começa a tapar o Sol. Sol ainda relativamente alto. Óculos de eclipse já postos."
-    },
-    {
-      code: "C2",
-      time: "≈ 20:29",
-      tUTC: "2026-08-12T18:29:00Z",
-      title: "Início da totalidade",
-      detail: "Segundos antes: grãos de Baily e diamond ring. A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos."
-    },
-    {
-      code: "Max",
-      time: "≈ 20:30",
-      tUTC: "2026-08-12T18:30:00Z",
-      title: "Máximo / meio da totalidade",
-      detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol."
-    },
-    {
-      code: "C3",
-      time: "≈ 20:31",
-      tUTC: "2026-08-12T18:31:00Z",
-      title: "Fim da totalidade",
-      detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos."
-    },
-    {
-      code: "Pôr",
-      time: "≈ 21:21",
-      tUTC: "2026-08-12T19:21:00Z",
-      title: "Pôr-do-Sol em León",
-      detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui."
-    },
-    {
-      code: "C4",
-      time: "— (após o pôr-do-Sol)",
-      tUTC: null,
-      title: "Fim teórico do parcial",
-      detail: "O quarto contacto ocorre quando o Sol já não está visível em León. Sem interesse prático."
-    }
-  ],
+  // ===================================================================
+  // CONTEÚDO PARTILHADO (igual em ambos os planos)
+  // ===================================================================
 
   // ---------- Cues de áudio (Web Speech API) ----------
-  // Cada cue dispara `offsetSec` segundos antes/depois da fase indicada (refPhase).
-  // catchupSec = janela após o momento em que ainda faz sentido disparar
-  // (se o tab esteve suspenso). staleText* é falado se o cue chegou atrasado.
+  // Cada cue dispara `offsetSec` segundos antes/depois da fase indicada
+  // (refPhase = C1 | C2 | Max | C3 | Pôr). catchupSec = janela após o momento
+  // em que ainda faz sentido disparar (se o tab esteve suspenso).
+  // staleText* é falado se o cue chegou atrasado.
+  // textPt/textEn aceitam {base} → cidade-base do plano activo (ex. "León").
   audio: {
-    // Pausa entre cues no preview encadeado (ms)
     previewPauseMs: 1500,
-    // Vozes preferidas (substring; primeira que match)
     preferredVoicePt: ["Microsoft Helia", "Microsoft Duarte", "Joana", "Cristiano", "Google português"],
     preferredVoiceEn: ["Microsoft Aria", "Google UK English Female", "Samantha"],
-    // Margem (ms) depois do último cue até o app-clock parar
     clockEndMarginMs: 10 * 60 * 1000
   },
 
@@ -1463,206 +1441,9 @@ window.APP_DATA = {
       refPhase: "Pôr",
       offsetSec: 0,
       catchupSec: 600,
-      textPt: "Pôr do Sol em León. A observação termina. Espera vinte minutos antes de sair, para evitar trânsito.",
-      textEn: "Sunset in León. Observation ends. Wait twenty minutes before leaving to avoid traffic."
+      textPt: "Pôr do Sol em {base}. A observação termina. Espera vinte minutos antes de sair, para evitar trânsito.",
+      textEn: "Sunset in {base}. Observation ends. Wait twenty minutes before leaving to avoid traffic."
     }
-  ],
-
-  // ---------- Spots de observação ----------
-  // Coordenadas aproximadas (úteis apenas para o mapa, opcional).
-  // sun.altitude/azimuth em graus, calculados para 18:30 UTC do dia 12/08/2026.
-  // totalityDurationSec é uma estimativa baseada na distância à linha central.
-  spots: [
-    {
-      id: "candamia",
-      name: "La Candamia / Puente Castro",
-      type: "plano",                 // plano | elevado | montanha
-      distance: "near",              // near | medium | long
-      distanceLabel: "Próximo (10–15 min de León)",
-      coords: [42.5708, -5.5547],
-      why: "Campos abertos a sul de León com horizonte oeste relativamente desimpedido. Acesso fácil, perto da cidade, boa logística para chegar cedo e sair depressa.",
-      alerts: [
-        "Confirmar horizonte W/NW livre antes da totalidade",
-        "Estacionamento pode encher — chegar cedo",
-      ],
-      howToFind: "La Candamia León",
-      tags: ["seguro", "logistica"],
-      facility: 5,
-      experience: 3,
-      sun: { altitude: 7.4, azimuth: 283 },
-      totalityDurationSec: 90,
-      totalityLabel: "≈ 1m 30s",
-      // Offsets (segundos) em relação aos timings genéricos de phases[].tUTC.
-      // Candamia é a referência da região de León — todos zero exceto C2/C3
-      // que reflectem a duração da totalidade centrada no Max.
-      phaseOffsets: { C1: 0,   C2: 15,  Max: 0,   C3: -15, "Pôr": 0 }
-    },
-    {
-      id: "portillo",
-      name: "Alto del Portillo / Valdefresno",
-      type: "elevado",
-      distance: "medium",
-      distanceLabel: "Médio (30–45 min de León)",
-      coords: [42.5300, -5.5300],
-      why: "Colinas ligeiramente elevadas a sul de León. Vista mais ampla, menos obstáculos urbanos, bom compromisso entre proximidade e horizonte limpo.",
-      alerts: [
-        "Estradas secundárias — atenção ao trânsito de regresso",
-        "Pouca sombra: levar chapéu / protetor solar para a espera",
-      ],
-      howToFind: "Alto del Portillo Valdefresno León",
-      tags: ["seguro", "fotogenico"],
-      facility: 4,
-      experience: 4,
-      sun: { altitude: 7.4, azimuth: 283 },
-      totalityDurationSec: 85,
-      totalityLabel: "≈ 1m 25s",
-      // Praticamente igual a Candamia; totalidade marginalmente mais curta.
-      phaseOffsets: { C1: 0,   C2: 18,  Max: 0,   C3: -17, "Pôr": 0 }
-    },
-    {
-      id: "paramo",
-      name: "Páramo Leonés (Santa María del Páramo / Valencia de Don Juan)",
-      type: "plano",
-      distance: "medium",
-      distanceLabel: "Médio (30–45 min de León)",
-      coords: [42.3622, -5.7592],
-      why: "Planícies amplas com horizonte 360° muito limpo. Ideal se houver risco de nuvens isoladas — fácil deslocar-se em estradas paralelas para um buraco no céu.",
-      alerts: [
-        "Pouca infraestrutura — levar tudo de casa",
-        "Verão pode estar muito quente até ao pôr do Sol",
-        "Mais a sul da linha central — totalidade um pouco mais curta",
-      ],
-      howToFind: "Santa María del Páramo, León",
-      tags: ["seguro", "flexivel"],
-      facility: 4,
-      experience: 4,
-      sun: { altitude: 7.5, azimuth: 283 },
-      totalityDurationSec: 70,
-      totalityLabel: "≈ 1m 10s",
-      // ~20 km S e W de León: totalidade mais curta, pôr-do-Sol ligeiramente
-      // mais tarde (longitude mais a W ganha à latitude mais a S).
-      phaseOffsets: { C1: -10, C2: 15,  Max: -10, C3: -35, "Pôr": 20 }
-    },
-    {
-      id: "babia",
-      name: "Babia / San Emiliano",
-      type: "montanha",
-      distance: "long",
-      distanceLabel: "Longo (1h–1h20 de León)",
-      coords: [42.9508, -6.0072],
-      why: "Plateau de montanha com cenário dramático e mais próximo da linha central — totalidade mais longa. Opção 'wow' para fotografia paisagística.",
-      alerts: [
-        "Tempo em montanha pode mudar depressa — risco de nuvens",
-        "Estrada de regresso à noite pode ser longa",
-        "Confirmar horizonte W/NW sem montanhas a tapar",
-      ],
-      howToFind: "San Emiliano Babia León",
-      tags: ["fotogenico", "wow"],
-      facility: 2,
-      experience: 5,
-      sun: { altitude: 7.8, azimuth: 283 },
-      totalityDurationSec: 100,
-      totalityLabel: "≈ 1m 40s",
-      // ~40 km NW de León, mais perto da linha central. Umbra desloca-se
-      // E→W, por isso Max ocorre ~35s antes. Pôr-do-Sol ~3min mais tarde
-      // (longitude e latitude favoráveis).
-      phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
-    },
-    {
-      id: "caxado",
-      name: "Mirador Monte Caxado (Galiza)",
-      type: "montanha",
-      distance: "long",
-      distanceLabel: "Muito longo (≈ 3h de carro de León)",
-      coords: [43.4744, -7.7311],
-      why: "Mirador panorâmico a ~1037 m no NW da Galiza (As Pontes / Vilalba). Microclima Atlântico totalmente diferente do interior castelhano — útil como plano B se houver risco de nuvens em toda a região de León. Próximo da linha central na entrada da umbra em Espanha (totalidade ligeiramente mais longa que em León). Sol um pouco mais alto porque a totalidade acontece mais cedo em relação ao pôr-do-sol local.",
-      alerts: [
-        "≈ 3h de carro desde León — considerar dormir na zona se for o spot escolhido",
-        "Meteorologia atlântica — variável, vento e nuvens marítimas possíveis",
-        "Acesso por estradas de montanha; confirmar estacionamento no mirador",
-        "Cobertura Street View pode ser limitada — usar 'Abrir no Google Maps' para confirmar acesso",
-      ],
-      howToFind: "Mirador Monte Caxado As Pontes Galicia",
-      tags: ["fotogenico", "wow", "backup_meteo"],
-      facility: 1,
-      experience: 5,
-      sun: { altitude: 7.6, azimuth: 283 },
-      totalityDurationSec: 110,
-      totalityLabel: "≈ 1m 50s",
-      // Galiza está a ~270 km NW de León. A umbra desloca-se de NW para
-      // SE em Espanha, por isso a totalidade ocorre ~90s ANTES que em
-      // León. O pôr-do-sol local é ~14 min mais tarde (Δlon ≈ 2°W +
-      // latitude ligeiramente mais alta no Verão).
-      phaseOffsets: { C1: -85, C2: -85, Max: -90, C3: -95, "Pôr": 840 }
-    }
-  ],
-
-  // ---------- Hotéis em León ----------
-  hotels: [
-    {
-      name: "Barceló León Conde Luna",
-      notes: ["Central", "Fácil acesso de carro", "Bom para família", "Boa saída para sul"]
-    },
-    {
-      name: "NH Collection León Plaza Mayor",
-      notes: ["Central", "Junto ao centro histórico", "Bom para família"]
-    },
-    {
-      name: "Silken Luis de León",
-      notes: ["Boa saída para sul", "Estacionamento útil", "Tranquilo"]
-    },
-    {
-      name: "AC Hotel León San Antonio",
-      notes: ["Fácil acesso de carro", "Boa ligação a vias rápidas", "Bom para família"]
-    }
-  ],
-
-  // ---------- Plano do dia (Eclipse Day) ----------
-  // Blocos da timeline. Hora apenas indicativa.
-  timeline: [
-    {
-      time: "16:00 – 17:00",
-      title: "Decisão com base no tempo",
-      detail: "Última verificação de previsão (cloud check). Escolher Spot Principal vs Backup. Confirmar com o grupo."
-    },
-    {
-      time: "17:30 – 18:30",
-      title: "Saída / viagem",
-      detail: "Sair de León para o spot escolhido. Margem para trânsito, paragens e estacionamento."
-    },
-    {
-      time: "19:30",
-      title: "Chegar e montar",
-      detail: "Instalar tapete/cadeiras, identificar horizonte W/NW, preparar óculos de eclipse, ajustar binóculos com filtro adequado."
-    },
-    {
-      time: "20:27 – 20:33",
-      title: "Janela de totalidade (aprox.)",
-      detail: "Totalidade dura poucos minutos. Durante a totalidade pode-se olhar sem filtros — fora dela, NUNCA olhar para o Sol sem proteção adequada."
-    },
-    {
-      time: "20:30 – 21:00",
-      title: "Ficar mais 20–30 min",
-      detail: "Evitar a saída em massa logo após a totalidade. Aproveitar para hidratar, arrumar com calma e deixar o trânsito escoar."
-    }
-  ],
-
-  // ---------- Matriz de decisão ----------
-  // weather -> id do spot recomendado
-  decisionMatrix: {
-    clear:    { spotId: "candamia", reason: "Céu limpo — não precisa de altitude extra. La Candamia oferece proximidade e logística simples." },
-    haze:     { spotId: "portillo", reason: "Com haze/horizonte sujo, ganhar altitude ajuda. Alto del Portillo dá vista mais limpa." },
-    clouds:   { spotId: "paramo",   reason: "Risco de nuvens isoladas — planícies do Páramo permitem ajustar a posição rapidamente." },
-    mountain: { spotId: "babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." },
-    atlantic: { spotId: "caxado",   reason: "Interior castelhano com nebulosidade generalizada — fugir para o Atlântico. Mirador Monte Caxado (Galiza) está noutro sistema meteorológico e perto da linha central. ~3h de viagem desde León." }
-  },
-
-  weatherOptions: [
-    { value: "clear",    label: "Céu limpo" },
-    { value: "haze",     label: "Algum haze / horizonte sujo" },
-    { value: "clouds",   label: "Risco de nuvens isoladas" },
-    { value: "mountain", label: "Estável e quer foco em fotos" },
-    { value: "atlantic", label: "Interior castelhano com mau tempo geral — fuga para Galiza" }
   ],
 
   // ---------- Checklist ----------
@@ -1712,13 +1493,51 @@ window.APP_DATA = {
     }
   ],
 
+  // ---------- Notas importantes ----------
+  notes: [
+    "Precisas de horizonte W/NW desimpedido — o Sol estará baixo no horizonte.",
+    "Chegar cedo por causa do trânsito e estacionamento.",
+    "Totalidade só dentro da faixa central; fora dela é eclipse parcial.",
+    "Nunca olhar para o Sol sem proteção adequada — exceto durante os poucos minutos de totalidade.",
+    "Confirmar previsão meteorológica nas horas antes; ter sempre um Spot Backup."
+  ],
+
+  // ---------- Plano do dia (genérico) ----------
+  // {base} é substituído pela cidade-base do plano activo.
+  timeline: [
+    {
+      time: "16:00 – 17:00",
+      title: "Decisão com base no tempo",
+      detail: "Última verificação de previsão (cloud check). Escolher Spot Principal vs Backup. Confirmar com o grupo."
+    },
+    {
+      time: "17:30 – 18:30",
+      title: "Saída / viagem",
+      detail: "Sair de {base} para o spot escolhido. Margem para trânsito, paragens e estacionamento."
+    },
+    {
+      time: "19:30",
+      title: "Chegar e montar",
+      detail: "Instalar tapete/cadeiras, identificar horizonte W/NW, preparar óculos de eclipse, ajustar binóculos com filtro adequado."
+    },
+    {
+      time: "20:27 – 20:33",
+      title: "Janela de totalidade (aprox.)",
+      detail: "Totalidade dura poucos minutos. Durante a totalidade pode-se olhar sem filtros — fora dela, NUNCA olhar para o Sol sem proteção adequada."
+    },
+    {
+      time: "20:30 – 21:00",
+      title: "Ficar mais 20–30 min",
+      detail: "Evitar a saída em massa logo após a totalidade. Aproveitar para hidratar, arrumar com calma e deixar o trânsito escoar."
+    }
+  ],
+
   // ---------- Meteorologia (Open-Meteo) ----------
-  // Open-Meteo é gratuito e não precisa de chave. Janela de previsão: 16 dias.
   meteo: {
     endpoint: "https://api.open-meteo.com/v1/forecast",
     forecastHorizonDays: 16,
     eclipseDateLocal: "2026-08-12",
-    eclipseHourLocal: 20,                // 20:00 CEST (hora da totalidade)
+    eclipseHourLocal: 20,
     timezone: "Europe/Madrid",
     hourlyVars: [
       "cloud_cover",
@@ -1732,26 +1551,365 @@ window.APP_DATA = {
     ]
   },
 
-  // ---------- Notas importantes ----------
-  notes: [
-    "Precisas de horizonte W/NW desimpedido — o Sol estará baixo no horizonte.",
-    "Chegar cedo por causa do trânsito e estacionamento.",
-    "Totalidade só dentro da faixa central; fora dela é eclipse parcial.",
-    "Nunca olhar para o Sol sem proteção adequada — exceto durante os poucos minutos de totalidade.",
-    "Confirmar previsão meteorológica nas horas antes; ter sempre um Spot Backup."
-  ],
+  // ===================================================================
+  // PLANOS (Plan A — León / Plan B — Caxado)
+  // ===================================================================
 
-  // ---------- Traduções (PT por defeito, EN parcial) ----------
+  plans: {
+
+    // -------------------------------------------------------------
+    // Plan A — León (Castilla y León, interior)
+    // -------------------------------------------------------------
+    leon: {
+      id: "leon",
+      namePt: "Plano A — León (Castilla)",
+      nameEn: "Plan A — León (Castile)",
+      base: {
+        city: "León",
+        coords: [42.5987, -5.5671],
+        regionPt: "Castilla y León",
+        regionEn: "Castile and León"
+      },
+
+      // Hora UTC do meio da totalidade na região de León (aprox.).
+      eclipse: {
+        totalityMidUTC:   "2026-08-12T18:30:00Z",
+        totalityStartUTC: "2026-08-12T18:29:00Z",
+        totalityEndUTC:   "2026-08-12T18:31:30Z",
+        sunsetLocal: "21:21",
+        notePt: "Horas aproximadas para a região de León. Variações entre spots de segundos a ~1 min.",
+        noteEn: "Approximate times for the León region. Inter-spot variations of seconds to ~1 min."
+      },
+
+      // Fases. tUTC é o timestamp ISO exato para os cues de áudio.
+      // C4 = null porque ocorre depois do pôr-do-sol em León.
+      phases: [
+        { code: "C1",  time: "≈ 19:30", tUTC: "2026-08-12T17:30:00Z",
+          title: "Início do parcial",
+          detail: "Primeiro contacto — a Lua começa a tapar o Sol. Sol ainda relativamente alto. Óculos de eclipse já postos." },
+        { code: "C2",  time: "≈ 20:29", tUTC: "2026-08-12T18:29:00Z",
+          title: "Início da totalidade",
+          detail: "Segundos antes: grãos de Baily e diamond ring. A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos." },
+        { code: "Max", time: "≈ 20:30", tUTC: "2026-08-12T18:30:00Z",
+          title: "Máximo / meio da totalidade",
+          detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol." },
+        { code: "C3",  time: "≈ 20:31", tUTC: "2026-08-12T18:31:00Z",
+          title: "Fim da totalidade",
+          detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos." },
+        { code: "Pôr", time: "≈ 21:21", tUTC: "2026-08-12T19:21:00Z",
+          title: "Pôr-do-Sol em León",
+          detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui." },
+        { code: "C4",  time: "— (após o pôr-do-Sol)", tUTC: null,
+          title: "Fim teórico do parcial",
+          detail: "O quarto contacto ocorre quando o Sol já não está visível em León. Sem interesse prático." }
+      ],
+
+      // Spots (IDs prefixados com plano para garantir unicidade global).
+      // phaseOffsets em segundos relativos a phases[].tUTC acima.
+      spots: [
+        {
+          id: "leon-candamia",
+          name: "La Candamia / Puente Castro",
+          type: "plano",
+          distance: "near",
+          distanceLabel: "Próximo (10–15 min de León)",
+          coords: [42.5708, -5.5547],
+          why: "Campos abertos a sul de León com horizonte oeste relativamente desimpedido. Acesso fácil, perto da cidade, boa logística para chegar cedo e sair depressa.",
+          alerts: [
+            "Confirmar horizonte W/NW livre antes da totalidade",
+            "Estacionamento pode encher — chegar cedo"
+          ],
+          howToFind: "La Candamia León",
+          tags: ["seguro", "logistica"],
+          facility: 5,
+          experience: 3,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 90,
+          totalityLabel: "≈ 1m 30s",
+          phaseOffsets: { C1: 0, C2: 15, Max: 0, C3: -15, "Pôr": 0 }
+        },
+        {
+          id: "leon-portillo",
+          name: "Alto del Portillo / Valdefresno",
+          type: "elevado",
+          distance: "medium",
+          distanceLabel: "Médio (30–45 min de León)",
+          coords: [42.5300, -5.5300],
+          why: "Colinas ligeiramente elevadas a sul de León. Vista mais ampla, menos obstáculos urbanos, bom compromisso entre proximidade e horizonte limpo.",
+          alerts: [
+            "Estradas secundárias — atenção ao trânsito de regresso",
+            "Pouca sombra: levar chapéu / protetor solar para a espera"
+          ],
+          howToFind: "Alto del Portillo Valdefresno León",
+          tags: ["seguro", "fotogenico"],
+          facility: 4,
+          experience: 4,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 85,
+          totalityLabel: "≈ 1m 25s",
+          phaseOffsets: { C1: 0, C2: 18, Max: 0, C3: -17, "Pôr": 0 }
+        },
+        {
+          id: "leon-paramo",
+          name: "Páramo Leonés",
+          type: "plano",
+          distance: "medium",
+          distanceLabel: "Médio (30–45 min de León, S/SW)",
+          coords: [42.3622, -5.7592],
+          why: "Planícies amplas com horizonte 360° muito limpo. Ideal se houver risco de nuvens isoladas — fácil deslocar-se em estradas paralelas para um buraco no céu.",
+          alerts: [
+            "Pouca sombra e pouca infraestrutura — preparar abastecimento",
+            "Considerar mobilidade: ter plano B para mudar de sítio rapidamente"
+          ],
+          howToFind: "Santa María del Páramo Valencia de Don Juan",
+          tags: ["seguro", "logistica"],
+          facility: 3,
+          experience: 4,
+          sun: { altitude: 7.5, azimuth: 283 },
+          totalityDurationSec: 70,
+          totalityLabel: "≈ 1m 10s",
+          phaseOffsets: { C1: -10, C2: 15, Max: -10, C3: -35, "Pôr": 20 }
+        },
+        {
+          id: "leon-babia",
+          name: "Babia / San Emiliano",
+          type: "montanha",
+          distance: "long",
+          distanceLabel: "Longo (1h–1h20 de León)",
+          coords: [42.9508, -6.0072],
+          why: "Plateau de montanha com cenário dramático e mais próximo da linha central — totalidade mais longa. Opção 'wow' para fotografia paisagística.",
+          alerts: [
+            "Tempo em montanha pode mudar depressa — risco de nuvens",
+            "Estrada de regresso à noite pode ser longa",
+            "Confirmar horizonte W/NW sem montanhas a tapar"
+          ],
+          howToFind: "San Emiliano Babia León",
+          tags: ["fotogenico", "wow"],
+          facility: 2,
+          experience: 5,
+          sun: { altitude: 7.8, azimuth: 283 },
+          totalityDurationSec: 100,
+          totalityLabel: "≈ 1m 40s",
+          phaseOffsets: { C1: -35, C2: -25, Max: -35, C3: -45, "Pôr": 170 }
+        }
+      ],
+
+      hotels: [
+        { name: "Barceló León Conde Luna",
+          notes: ["Central", "Fácil acesso de carro", "Bom para família", "Boa saída para sul"] },
+        { name: "NH Collection León Plaza Mayor",
+          notes: ["Central", "Junto ao centro histórico", "Bom para família"] },
+        { name: "Silken Luis de León",
+          notes: ["Boa saída para sul", "Estacionamento útil", "Tranquilo"] },
+        { name: "AC Hotel León San Antonio",
+          notes: ["Fácil acesso de carro", "Boa ligação a vias rápidas", "Bom para família"] }
+      ],
+
+      // weather -> id do spot recomendado + razão
+      decisionMatrix: {
+        clear:    { spotId: "leon-candamia", reason: "Céu limpo — não precisa de altitude extra. La Candamia oferece proximidade e logística simples." },
+        haze:     { spotId: "leon-portillo", reason: "Com haze/horizonte sujo, ganhar altitude ajuda. Alto del Portillo dá vista mais limpa." },
+        clouds:   { spotId: "leon-paramo",   reason: "Risco de nuvens isoladas — planícies do Páramo permitem ajustar a posição rapidamente." },
+        mountain: { spotId: "leon-babia",    reason: "Atmosfera estável e foco em fotografia — Babia oferece o cenário mais cinematográfico." }
+      },
+
+      weatherOptions: [
+        { value: "clear",    label: "Céu limpo" },
+        { value: "haze",     label: "Algum haze / horizonte sujo" },
+        { value: "clouds",   label: "Risco de nuvens isoladas" },
+        { value: "mountain", label: "Estável e quer foco em fotos" }
+      ]
+    },
+
+    // -------------------------------------------------------------
+    // Plan B — Caxado (Galicia, costa atlântica)
+    // -------------------------------------------------------------
+    caxado: {
+      id: "caxado",
+      namePt: "Plano B — Caxado (Galiza)",
+      nameEn: "Plan B — Caxado (Galicia)",
+      base: {
+        city: "Ferrol",
+        coords: [43.4831, -8.2333],
+        regionPt: "Galiza",
+        regionEn: "Galicia"
+      },
+
+      // Galiza está ~270 km NW de León. A umbra desloca-se de NW→SE em
+      // Espanha, por isso a totalidade ocorre ~90s mais cedo. O pôr-do-sol
+      // local é ~14 min mais tarde (Δlon ≈ 2°W + lat ligeiramente mais alta).
+      eclipse: {
+        totalityMidUTC:   "2026-08-12T18:28:30Z",
+        totalityStartUTC: "2026-08-12T18:27:35Z",
+        totalityEndUTC:   "2026-08-12T18:29:25Z",
+        sunsetLocal: "21:35",
+        notePt: "Horas aproximadas para o NW da Galiza (As Pontes/Caxado). Spots costeiros vêem a totalidade ainda mais cedo.",
+        noteEn: "Approximate times for NW Galicia (As Pontes/Caxado). Coastal spots see totality slightly earlier."
+      },
+
+      // Phases. A referência do plano corresponde ao spot Mirador Monte Caxado
+      // (totalidade 110s centrada em 18:28:30 UTC).
+      phases: [
+        { code: "C1",  time: "≈ 19:28", tUTC: "2026-08-12T17:28:00Z",
+          title: "Início do parcial",
+          detail: "Primeiro contacto — a Lua começa a tapar o Sol. Ainda há ~1h de eclipse parcial antes da totalidade." },
+        { code: "C2",  time: "≈ 20:27", tUTC: "2026-08-12T18:27:35Z",
+          title: "Início da totalidade",
+          detail: "A Lua cobre totalmente o Sol. Só agora se podem tirar os óculos. Galiza está perto da entrada da umbra em Espanha." },
+        { code: "Max", time: "≈ 20:28", tUTC: "2026-08-12T18:28:30Z",
+          title: "Máximo / meio da totalidade",
+          detail: "Coroa solar visível, céu escurece para crepúsculo 360°. Vénus e Mercúrio podem aparecer junto ao Sol." },
+        { code: "C3",  time: "≈ 20:29", tUTC: "2026-08-12T18:29:25Z",
+          title: "Fim da totalidade",
+          detail: "Diamond ring no lado oposto. Voltar a colocar os óculos IMEDIATAMENTE — o Sol reaparece em segundos." },
+        { code: "Pôr", time: "≈ 21:35", tUTC: "2026-08-12T19:35:00Z",
+          title: "Pôr-do-Sol na Galiza",
+          detail: "O Sol põe-se ainda parcialmente eclipsado, muito perto do horizonte W. Observação termina aqui." },
+        { code: "C4",  time: "— (após o pôr-do-Sol)", tUTC: null,
+          title: "Fim teórico do parcial",
+          detail: "O quarto contacto ocorre quando o Sol já não está visível. Sem interesse prático." }
+      ],
+
+      spots: [
+        {
+          id: "caxado-monte",
+          name: "Mirador Monte Caxado",
+          type: "montanha",
+          distance: "near",
+          distanceLabel: "Próximo (35 min de Ferrol)",
+          coords: [43.4744, -7.7311],
+          why: "Mirador panorâmico a ~1037 m no NW da Galiza (As Pontes / Vilalba). Perto da linha central na entrada da umbra em Espanha — totalidade ligeiramente mais longa. Ângulo elevado dá vista limpa do horizonte oeste.",
+          alerts: [
+            "Acesso por estradas de montanha; confirmar estacionamento no mirador",
+            "Meteorologia atlântica pode mudar depressa — variável, vento possível",
+            "Cobertura Street View pode ser limitada — usar 'Abrir no Google Maps'"
+          ],
+          howToFind: "Mirador Monte Caxado As Pontes Galicia",
+          tags: ["fotogenico", "wow"],
+          facility: 3,
+          experience: 5,
+          sun: { altitude: 7.6, azimuth: 283 },
+          totalityDurationSec: 110,
+          totalityLabel: "≈ 1m 50s",
+          // Referência do plano (offsets a zero).
+          phaseOffsets: { C1: 0, C2: 0, Max: 0, C3: 0, "Pôr": 0 }
+        },
+        {
+          id: "caxado-frouxeira",
+          name: "Mirador da Frouxeira (Valdoviño)",
+          type: "elevado",
+          distance: "near",
+          distanceLabel: "Próximo (30 min de Ferrol)",
+          coords: [43.6094, -8.1639],
+          why: "Colina costeira com vista para o Atlântico Norte. Horizonte oeste sobre o oceano — sem obstáculos. Boa opção quando o interior tem haze e a costa está limpa.",
+          alerts: [
+            "Risco de nuvens marítimas baixas (nevoeiro do Atlântico)",
+            "Vento costeiro — segurar bem o equipamento",
+            "Confirmar horizonte W sem nuvens junto ao mar"
+          ],
+          howToFind: "Mirador da Frouxeira Valdoviño",
+          tags: ["fotogenico", "seguro"],
+          facility: 4,
+          experience: 4,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 100,
+          totalityLabel: "≈ 1m 40s",
+          // ~50 km NW de Caxado, mais cedo na umbra. Pôr-do-sol +2 min
+          // (longitude mais a oeste).
+          phaseOffsets: { C1: -20, C2: -15, Max: -20, C3: -25, "Pôr": 120 }
+        },
+        {
+          id: "caxado-sanpedro",
+          name: "Monte San Pedro (A Coruña)",
+          type: "elevado",
+          distance: "medium",
+          distanceLabel: "Médio (55 min de Ferrol)",
+          coords: [43.3801, -8.4544],
+          why: "Parque urbano elevado em A Coruña com vista 360° sobre a cidade e o Atlântico. Acesso por estrada/ascensor panorâmico. Logística muito boa: hotéis e restaurantes a 10 min.",
+          alerts: [
+            "Mais a oeste — totalidade ligeiramente mais curta (~90s)",
+            "Cidade — poluição luminosa irrelevante mas trânsito possível",
+            "Estacionamento limitado no parque — chegar cedo"
+          ],
+          howToFind: "Monte San Pedro A Coruña parque",
+          tags: ["logistica", "urbano"],
+          facility: 5,
+          experience: 3,
+          sun: { altitude: 7.2, azimuth: 283 },
+          totalityDurationSec: 90,
+          totalityLabel: "≈ 1m 30s",
+          // A Coruña a SW de Caxado. Max ~15s mais cedo, pôr-do-sol +3 min.
+          phaseOffsets: { C1: -15, C2: -5, Max: -15, C3: -25, "Pôr": 200 }
+        },
+        {
+          id: "caxado-ortegal",
+          name: "Cabo Ortegal (Cariño)",
+          type: "plano",
+          distance: "medium",
+          distanceLabel: "Médio (1h de Ferrol)",
+          coords: [43.7654, -7.8740],
+          why: "Falésias dramáticas no extremo norte da Galiza, onde o Cantábrico encontra o Atlântico. Cenário 'fim do mundo' — opção mais fotogénica do plano. Sol no horizonte sobre o mar.",
+          alerts: [
+            "Vento forte e exposição — agasalhos obrigatórios",
+            "Nevoeiro marítimo possível mesmo no Verão",
+            "Estradas de montanha até ao cabo — última parte estreita",
+            "Sem qualquer infraestrutura — levar tudo"
+          ],
+          howToFind: "Cabo Ortegal Cariño A Coruña",
+          tags: ["fotogenico", "wow"],
+          facility: 1,
+          experience: 5,
+          sun: { altitude: 7.4, azimuth: 283 },
+          totalityDurationSec: 90,
+          totalityLabel: "≈ 1m 30s",
+          // N de Caxado, mais cedo na umbra. Pôr-do-sol +30s.
+          phaseOffsets: { C1: -30, C2: -20, Max: -30, C3: -40, "Pôr": 30 }
+        }
+      ],
+
+      hotels: [
+        { name: "Parador de Ferrol",
+          notes: ["Central (Ferrol)", "Histórico", "Vista para a ria", "Bom para família"] },
+        { name: "Hotel Almirante (Ferrol)",
+          notes: ["Centro de Ferrol", "Estacionamento", "Boa relação qualidade/preço"] },
+        { name: "Hesperia Finisterre (A Coruña)",
+          notes: ["Frente ao mar (A Coruña)", "~45 min de Ferrol", "Familiar"] },
+        { name: "Meliá María Pita (A Coruña)",
+          notes: ["Praia de Riazor (A Coruña)", "Central", "Bom para família"] }
+      ],
+
+      decisionMatrix: {
+        clear:    { spotId: "caxado-monte",      reason: "Céu limpo — aproveitar o mirador panorâmico a 1037 m com totalidade mais longa do plano." },
+        haze:     { spotId: "caxado-frouxeira",  reason: "Haze no interior — a costa pode estar limpa. Frouxeira oferece elevação com horizonte marítimo." },
+        clouds:   { spotId: "caxado-sanpedro",   reason: "Risco de nuvens — Monte San Pedro está na cidade, dá mobilidade rápida para mudar de spot dentro de A Coruña." },
+        mountain: { spotId: "caxado-ortegal",    reason: "Atmosfera estável e foco em fotos — Cabo Ortegal oferece o cenário mais dramático (falésias sobre o Atlântico)." }
+      },
+
+      weatherOptions: [
+        { value: "clear",    label: "Céu limpo" },
+        { value: "haze",     label: "Algum haze / horizonte sujo" },
+        { value: "clouds",   label: "Risco de nuvens isoladas" },
+        { value: "mountain", label: "Estável e quer foco em fotos" }
+      ]
+    }
+
+  },
+
+  // ===================================================================
+  // i18n (PT por defeito, EN parcial)
+  // ===================================================================
   i18n: {
     pt: {
-      appTitle: "Eclipse Solar Total — León 2026",
+      appTitle: "Eclipse Solar Total — Espanha 2026",
       appSubtitle: "12 de Agosto de 2026 · Plano de observação para a família",
+      planLabel: "Plano",
       myBase: "Base",
       primarySpot: "Spot Principal",
       backupSpot: "Spot Backup",
       notSet: "(por definir)",
-      sectionSpots: "Spots de Observação (perto de León)",
-      sectionHotels: "Hotéis em León (base recomendada)",
+      // {city} é substituído pela cidade-base do plano activo.
+      sectionSpotsTpl: "Spots de Observação (perto de {city})",
+      sectionHotelsTpl: "Hotéis em {city} (base recomendada)",
       sectionPlan: "Plano do Dia",
       sectionChecklist: "Checklist",
       sectionNotes: "Notas Importantes",
@@ -1777,6 +1935,7 @@ window.APP_DATA = {
       audioNoMoreCues: "Sem mais cues programados.",
       audioCuesPlanned: "Ver todos os cues planeados",
       audioMobileWarning: "No telemóvel: mantém o browser aberto e o ecrã ligado para garantir que os cues tocam. iPhone tem mais limitações que Android.",
+      audioPlanSwitched: "Plano mudou — áudio desativado por segurança. Re-activa se queres ouvir os cues do novo plano.",
       countdownLabel: "Até à totalidade",
       countdownActive: "TOTALIDADE EM CURSO",
       countdownDone: "Eclipse concluído",
@@ -1790,7 +1949,7 @@ window.APP_DATA = {
       totalityDuration: "Totalidade",
       approxDisclaimer: "Valores aproximados — confirmar com fontes oficiais perto da data.",
       timingsAdjusted: "Timings ajustados para",
-      timingsGeneric: "Timings: média regional (define um Spot Principal para ajustar)",
+      timingsGenericTpl: "Timings: média regional ({region}) — define um Spot Principal para ajustar",
       streetviewTitle: "Vista do Spot Principal",
       streetviewHint: "Câmara apontada na direção do Sol durante a totalidade. Em zonas rurais a vista pode cair na estrada mais próxima.",
       streetviewOpenMaps: "Abrir no Google Maps",
@@ -1851,18 +2010,18 @@ window.APP_DATA = {
       copied: "Copiado!",
       languageLabel: "Idioma",
       mapFallback: "Mapa indisponível — usa a lista de spots abaixo.",
-      base: "León",
       footer: "Dados editáveis em data.js. App estática — funciona offline depois de carregada."
     },
     en: {
-      appTitle: "Total Solar Eclipse — León 2026",
+      appTitle: "Total Solar Eclipse — Spain 2026",
       appSubtitle: "August 12, 2026 · Family viewing plan",
+      planLabel: "Plan",
       myBase: "Base",
       primarySpot: "Primary Spot",
       backupSpot: "Backup Spot",
       notSet: "(not set)",
-      sectionSpots: "Viewing Spots (near León)",
-      sectionHotels: "Hotels in León (recommended base)",
+      sectionSpotsTpl: "Viewing Spots (near {city})",
+      sectionHotelsTpl: "Hotels in {city} (recommended base)",
       sectionPlan: "Day Plan",
       sectionChecklist: "Checklist",
       sectionNotes: "Important Notes",
@@ -1888,6 +2047,7 @@ window.APP_DATA = {
       audioNoMoreCues: "No more cues scheduled.",
       audioCuesPlanned: "Show all planned cues",
       audioMobileWarning: "On mobile: keep browser open and screen on so cues play reliably. iPhone has more limitations than Android.",
+      audioPlanSwitched: "Plan changed — audio disabled for safety. Re-activate to hear the new plan's cues.",
       countdownLabel: "Until totality",
       countdownActive: "TOTALITY IN PROGRESS",
       countdownDone: "Eclipse finished",
@@ -1901,7 +2061,7 @@ window.APP_DATA = {
       totalityDuration: "Totality",
       approxDisclaimer: "Approximate values — verify with official sources near the date.",
       timingsAdjusted: "Timings adjusted for",
-      timingsGeneric: "Timings: regional average (set a Primary Spot to adjust)",
+      timingsGenericTpl: "Timings: regional average ({region}) — set a Primary Spot to adjust",
       streetviewTitle: "View of the Primary Spot",
       streetviewHint: "Camera oriented toward the Sun during totality. In rural areas the view may snap to the nearest road.",
       streetviewOpenMaps: "Open in Google Maps",
@@ -1962,7 +2122,6 @@ window.APP_DATA = {
       copied: "Copied!",
       languageLabel: "Language",
       mapFallback: "Map unavailable — use the spot list below.",
-      base: "León",
       footer: "Editable data in data.js. Static app — works offline after first load."
     }
   }
@@ -1987,12 +2146,34 @@ window.APP_DATA = {
   // -----------------------------------------------------------
   // Estado / persistência
   // -----------------------------------------------------------
+  //
+  // Storage layout (v2 — suporta dois planos):
+  //   eclipse2026.lang            — "pt" | "en"
+  //   eclipse2026.currentPlan     — "leon" | "caxado"
+  //   eclipse2026.primaryByPlan   — JSON { leon: spotId?, caxado: spotId? }
+  //   eclipse2026.backupByPlan    — JSON { leon: spotId?, caxado: spotId? }
+  //   eclipse2026.weatherByPlan   — JSON { leon: "clear", caxado: "haze", ... }
+  //   eclipse2026.meteoCache.v2   — JSON { leon: { updatedAt, spots }, caxado: ... }
+  //   eclipse2026.checklist       — JSON { itemId: bool }            (partilhado)
+  //   eclipse2026.audioFired      — JSON { leon: [ids], caxado: [ids] } (sessionStorage)
+  //
+  // Migração v1→v2: chaves antigas (primarySpot, backupSpot, meteoCache) são
+  // lidas e copiadas para o namespace "leon" e depois removidas. Os IDs
+  // antigos não tinham prefixo, por isso prefixam-se com "leon-" se assim
+  // existirem no plano leon.
+  // -----------------------------------------------------------
   const STORAGE_KEYS = {
-    primary:   "eclipse2026.primarySpot",
-    backup:    "eclipse2026.backupSpot",
-    checklist: "eclipse2026.checklist",
-    lang:      "eclipse2026.lang",
-    meteo:     "eclipse2026.meteoCache"
+    lang:           "eclipse2026.lang",
+    currentPlan:    "eclipse2026.currentPlan",
+    primaryByPlan:  "eclipse2026.primaryByPlan",
+    backupByPlan:   "eclipse2026.backupByPlan",
+    weatherByPlan:  "eclipse2026.weatherByPlan",
+    checklist:      "eclipse2026.checklist",
+    meteo:          "eclipse2026.meteoCache.v2",
+    // legacy (v1)
+    legacyPrimary:  "eclipse2026.primarySpot",
+    legacyBackup:   "eclipse2026.backupSpot",
+    legacyMeteo:    "eclipse2026.meteoCache"
   };
 
   // Safe localStorage wrappers — alguns contextos (file://, modo privado)
@@ -2012,24 +2193,111 @@ window.APP_DATA = {
     }
   };
 
+  function readJSON(key, fallback) {
+    try {
+      const raw = safeStorage.get(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed != null ? parsed : fallback;
+    } catch (e) { return fallback; }
+  }
+
+  function writeJSON(key, value) {
+    try { safeStorage.set(key, JSON.stringify(value)); }
+    catch (e) { /* ignore */ }
+  }
+
+  // Migração lazy a partir das chaves v1.
+  function migrateLegacyStorageIfNeeded() {
+    // Só migra se ainda não há valores na v2.
+    const hasNew = safeStorage.get(STORAGE_KEYS.primaryByPlan)
+                || safeStorage.get(STORAGE_KEYS.backupByPlan)
+                || safeStorage.get(STORAGE_KEYS.currentPlan);
+    const legacyPrimary = safeStorage.get(STORAGE_KEYS.legacyPrimary);
+    const legacyBackup  = safeStorage.get(STORAGE_KEYS.legacyBackup);
+
+    if (!hasNew && (legacyPrimary || legacyBackup)) {
+      const data = (window.APP_DATA || {});
+      const leonSpots = ((data.plans || {}).leon || {}).spots || [];
+      const mapToLeonId = (id) => {
+        if (!id) return null;
+        // Já tem prefixo?
+        if (leonSpots.some((s) => s.id === id)) return id;
+        // Tentar prefixar.
+        const tryPref = "leon-" + id;
+        if (leonSpots.some((s) => s.id === tryPref)) return tryPref;
+        return null;
+      };
+      const primary = { leon: mapToLeonId(legacyPrimary), caxado: null };
+      const backup  = { leon: mapToLeonId(legacyBackup),  caxado: null };
+      writeJSON(STORAGE_KEYS.primaryByPlan, primary);
+      writeJSON(STORAGE_KEYS.backupByPlan,  backup);
+    }
+
+    // Limpar chaves legadas (já não são usadas).
+    if (legacyPrimary) safeStorage.remove(STORAGE_KEYS.legacyPrimary);
+    if (legacyBackup)  safeStorage.remove(STORAGE_KEYS.legacyBackup);
+    // Cache de meteo: descartar a v1 (formato podia conter IDs sem prefixo).
+    if (safeStorage.get(STORAGE_KEYS.legacyMeteo)) {
+      safeStorage.remove(STORAGE_KEYS.legacyMeteo);
+    }
+  }
+
   const state = {
     lang: safeStorage.get(STORAGE_KEYS.lang) || "pt",
-    primarySpotId: safeStorage.get(STORAGE_KEYS.primary) || null,
-    backupSpotId:  safeStorage.get(STORAGE_KEYS.backup)  || null,
+    currentPlanId: null,         // preenchido em init
+    primaryByPlan: { leon: null, caxado: null },
+    backupByPlan:  { leon: null, caxado: null },
+    weatherByPlan: { leon: "clear", caxado: "clear" },
     filters: { distance: "all", type: "all", priority: "all" },
     sortBy: "facility",
-    weather: "clear",
-    meteoCache: null     // in-memory mirror of forecast cache
+    meteoCache: null     // in-memory mirror of forecast cache (whole object: { leon, caxado })
   };
+
+  // Devolve o plano activo a partir de window.APP_DATA.plans[currentPlanId].
+  function getCurrentPlan() {
+    const plans = (window.APP_DATA && window.APP_DATA.plans) || {};
+    return plans[state.currentPlanId] || plans.leon || Object.values(plans)[0] || {};
+  }
 
   // Atalhos
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const t = (key) => {
+  // i18n com substituição opcional de variáveis: t("sectionSpotsTpl", { city: "León" }).
+  const t = (key, vars) => {
     const dict = (window.APP_DATA.i18n[state.lang]) || window.APP_DATA.i18n.pt;
-    return dict[key] || key;
+    let txt = dict[key] != null ? dict[key] : key;
+    if (vars && typeof txt === "string") {
+      Object.keys(vars).forEach((k) => {
+        txt = txt.replace(new RegExp("\\{" + k + "\\}", "g"), String(vars[k]));
+      });
+    }
+    return txt;
   };
+
+  // Nome do plano traduzido ("Plano A — León (Castilla)" etc.).
+  function planLabel(plan) {
+    if (!plan) return "";
+    return state.lang === "pt" ? (plan.namePt || plan.id) : (plan.nameEn || plan.id);
+  }
+
+  // Região traduzida do plano activo (ex. "Castilla y León" / "Galicia").
+  function planRegion(plan) {
+    if (!plan || !plan.base) return "";
+    return state.lang === "pt" ? (plan.base.regionPt || "") : (plan.base.regionEn || "");
+  }
+
+  // Substituição de {base}/{region} em strings vindas de data.js (cues áudio,
+  // timeline). Usa o plano ACTIVO no momento de speak/render.
+  function substituteBase(s) {
+    const plan = getCurrentPlan();
+    const base = (plan.base && plan.base.city) || "";
+    const region = planRegion(plan);
+    return String(s || "")
+      .replace(/\{base\}/g, base)
+      .replace(/\{region\}/g, region);
+  }
 
   // -----------------------------------------------------------
   // Inicialização
@@ -2040,11 +2308,36 @@ window.APP_DATA = {
       return;
     }
 
+    // Migrar chaves antigas (v1 → v2) antes de ler estado.
+    migrateLegacyStorageIfNeeded();
+
+    // Carregar mapas plan-scoped do storage.
+    const primaryByPlan = readJSON(STORAGE_KEYS.primaryByPlan, null);
+    if (primaryByPlan && typeof primaryByPlan === "object") {
+      state.primaryByPlan = Object.assign(state.primaryByPlan, primaryByPlan);
+    }
+    const backupByPlan = readJSON(STORAGE_KEYS.backupByPlan, null);
+    if (backupByPlan && typeof backupByPlan === "object") {
+      state.backupByPlan = Object.assign(state.backupByPlan, backupByPlan);
+    }
+    const weatherByPlan = readJSON(STORAGE_KEYS.weatherByPlan, null);
+    if (weatherByPlan && typeof weatherByPlan === "object") {
+      state.weatherByPlan = Object.assign(state.weatherByPlan, weatherByPlan);
+    }
+
+    // Plano activo: valor persistido se válido, senão "leon".
+    const stored = safeStorage.get(STORAGE_KEYS.currentPlan);
+    const plans = (window.APP_DATA.plans || {});
+    state.currentPlanId = (stored && plans[stored]) ? stored : "leon";
+
     // Idioma inicial
     $("#lang-select").value = state.lang;
     document.documentElement.lang = state.lang === "pt" ? "pt-PT" : "en";
 
+    populatePlanSelect();
+
     applyTranslations();
+    applyDynamicTitles();
     renderWeatherOptions();
     renderTimeline();
     renderPhases();
@@ -2064,8 +2357,23 @@ window.APP_DATA = {
     bindEvents();
   });
 
+  // Preenche o <select id="plan-select"> com os planos disponíveis.
+  function populatePlanSelect() {
+    const sel = $("#plan-select");
+    if (!sel) return;
+    sel.innerHTML = "";
+    Object.keys(window.APP_DATA.plans || {}).forEach((id) => {
+      const plan = window.APP_DATA.plans[id];
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = planLabel(plan);
+      sel.appendChild(opt);
+    });
+    sel.value = state.currentPlanId;
+  }
+
   // -----------------------------------------------------------
-  // Tradução estática (elementos com data-i18n)
+  // Tradução estática (elementos com data-i18n) + títulos dinâmicos
   // -----------------------------------------------------------
   function applyTranslations() {
     $$("[data-i18n]").forEach((el) => {
@@ -2075,6 +2383,22 @@ window.APP_DATA = {
     });
     // Recolocar valores "Spot não definido" no resumo se necessário
     updateSummary();
+  }
+
+  // Títulos / labels que dependem do plano activo. Devem ser re-aplicados
+  // em qualquer troca de plano OU de idioma.
+  function applyDynamicTitles() {
+    const plan = getCurrentPlan();
+    const city = (plan.base && plan.base.city) || "";
+
+    const hSpots = document.getElementById("h-spots");
+    if (hSpots) hSpots.textContent = t("sectionSpotsTpl", { city: city });
+
+    const hHotels = document.getElementById("h-hotels");
+    if (hHotels) hHotels.textContent = t("sectionHotelsTpl", { city: city });
+
+    // Re-popular o select com nomes traduzidos sempre que muda o idioma.
+    populatePlanSelect();
   }
 
   // -----------------------------------------------------------
@@ -2087,6 +2411,7 @@ window.APP_DATA = {
       safeStorage.set(STORAGE_KEYS.lang, state.lang);
       document.documentElement.lang = state.lang === "pt" ? "pt-PT" : "en";
       applyTranslations();
+      applyDynamicTitles();
       // Re-render para etiquetas dinâmicas dos cards/timeline
       renderTimeline();
       renderPhases();
@@ -2105,6 +2430,12 @@ window.APP_DATA = {
       AudioCue.renderCueList();
       AudioCue.renderNextCue();
     });
+
+    // Plano
+    const planSel = $("#plan-select");
+    if (planSel) {
+      planSel.addEventListener("change", (e) => setPlan(e.target.value));
+    }
 
     // Filtros
     $$('input[name="f-distance"]').forEach((r) =>
@@ -2125,7 +2456,8 @@ window.APP_DATA = {
 
     // Tempo / matriz de decisão
     $("#weather-select").addEventListener("change", (e) => {
-      state.weather = e.target.value;
+      state.weatherByPlan[state.currentPlanId] = e.target.value;
+      writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
       updateWeatherRecommendation();
       highlightDecisionRow();
     });
@@ -2139,13 +2471,74 @@ window.APP_DATA = {
   }
 
   // -----------------------------------------------------------
+  // Troca de plano — refresh completo da UI.
+  //
+  // Princípios (validados com rubber-duck):
+  // - Áudio é desactivado por segurança: cues do novo plano podem ter timings
+  //   diferentes e talvez já tenham "passado" no novo plano. Utilizador
+  //   re-activa manualmente.
+  // - Conjunto de cues disparados é por plano: ao trocar, salvamos o set
+  //   actual e carregamos o do novo plano (do sessionStorage).
+  // - Mapa é reusado (uma só instância) — markers são limpos e re-adicionados.
+  // - Estado de meteo está sempre em cache por plano (cache[planId]).
+  // -----------------------------------------------------------
+  function setPlan(newId) {
+    const plans = (window.APP_DATA.plans || {});
+    if (!plans[newId] || newId === state.currentPlanId) return;
+
+    // 1) Persistir conjunto de cues do plano actual antes de trocar.
+    AudioCue.saveFiredForCurrentPlan();
+    // 2) Desactivar áudio: por segurança, evita falar cues do plano novo.
+    const wasAudioEnabled = AudioCue.state.enabled;
+    if (wasAudioEnabled) AudioCue.deactivate();
+
+    // 3) Trocar plano
+    state.currentPlanId = newId;
+    safeStorage.set(STORAGE_KEYS.currentPlan, newId);
+
+    // 4) Validar/normalizar weather do novo plano contra os seus options.
+    const plan = getCurrentPlan();
+    const opts = (plan.weatherOptions || []).map((o) => o.value);
+    if (!state.weatherByPlan[newId] || opts.indexOf(state.weatherByPlan[newId]) === -1) {
+      state.weatherByPlan[newId] = opts[0] || "clear";
+      writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
+    }
+
+    // 5) Reset audio fired state para os cues do novo plano.
+    AudioCue.loadFiredForCurrentPlan();
+
+    // 6) Re-render full
+    applyDynamicTitles();
+    renderWeatherOptions();
+    renderTimeline();
+    renderPhases();
+    renderDecisionTable();
+    renderHotels();
+    renderSpots();
+    updateSummary();
+    refreshMapMarkers();
+    renderStreetView();
+    renderMeteo();
+    renderMeteoDisclaimer();
+    updateCountdown();
+    AudioCue.renderStatus();
+    AudioCue.renderCueList();
+    AudioCue.renderNextCue();
+
+    if (wasAudioEnabled) {
+      // Avisar visualmente o utilizador que o áudio foi desactivado.
+      showToast(t("audioPlanSwitched"));
+    }
+  }
+
+  // -----------------------------------------------------------
   // Render: Spots
   // -----------------------------------------------------------
   function renderSpots() {
     const grid = $("#spots-grid");
     grid.innerHTML = "";
 
-    const list = filterAndSortSpots(window.APP_DATA.spots);
+    const list = filterAndSortSpots(getCurrentPlan().spots || []);
 
     if (list.length === 0) {
       const empty = document.createElement("p");
@@ -2179,8 +2572,8 @@ window.APP_DATA = {
   function buildSpotCard(spot) {
     const card = document.createElement("article");
     card.className = "card spot-card";
-    if (spot.id === state.primarySpotId) card.classList.add("is-primary");
-    if (spot.id === state.backupSpotId)  card.classList.add("is-backup");
+    if (spot.id === currentPrimaryId()) card.classList.add("is-primary");
+    if (spot.id === currentBackupId())  card.classList.add("is-backup");
 
     // Header
     const header = document.createElement("div");
@@ -2199,8 +2592,8 @@ window.APP_DATA = {
     }
     if (spot.tags.includes("seguro"))      badges.appendChild(makeBadge(t("safer"), "badge-ok"));
     if (spot.tags.includes("fotogenico"))  badges.appendChild(makeBadge(t("photogenic"), "badge-primary"));
-    if (spot.id === state.primarySpotId)   badges.appendChild(makeBadge(t("primarySpot"), "badge-primary"));
-    if (spot.id === state.backupSpotId)    badges.appendChild(makeBadge(t("backupSpot"), "badge-accent"));
+    if (spot.id === currentPrimaryId())    badges.appendChild(makeBadge(t("primarySpot"), "badge-primary"));
+    if (spot.id === currentBackupId())     badges.appendChild(makeBadge(t("backupSpot"), "badge-accent"));
 
     header.appendChild(title);
     header.appendChild(badges);
@@ -2259,14 +2652,14 @@ window.APP_DATA = {
     btnPrimary.type = "button";
     btnPrimary.className = "btn btn-primary";
     btnPrimary.textContent = t("setPrimary");
-    btnPrimary.setAttribute("aria-pressed", spot.id === state.primarySpotId ? "true" : "false");
+    btnPrimary.setAttribute("aria-pressed", spot.id === currentPrimaryId() ? "true" : "false");
     btnPrimary.addEventListener("click", () => setPrimarySpot(spot.id));
 
     const btnBackup = document.createElement("button");
     btnBackup.type = "button";
     btnBackup.className = "btn btn-accent";
     btnBackup.textContent = t("setBackup");
-    btnBackup.setAttribute("aria-pressed", spot.id === state.backupSpotId ? "true" : "false");
+    btnBackup.setAttribute("aria-pressed", spot.id === currentBackupId() ? "true" : "false");
     btnBackup.addEventListener("click", () => setBackupSpot(spot.id));
 
     actions.appendChild(btnCopy);
@@ -2305,14 +2698,18 @@ window.APP_DATA = {
   }
 
   // -----------------------------------------------------------
-  // Spot principal / backup
+  // Spot principal / backup  (state plan-scoped)
   // -----------------------------------------------------------
+  function currentPrimaryId() { return state.primaryByPlan[state.currentPlanId] || null; }
+  function currentBackupId()  { return state.backupByPlan[state.currentPlanId]  || null; }
+
   function setPrimarySpot(id) {
-    if (state.primarySpotId === id) {
-      state.primarySpotId = null;
+    const cur = currentPrimaryId();
+    if (cur === id) {
+      state.primaryByPlan[state.currentPlanId] = null;
     } else {
-      state.primarySpotId = id;
-      if (state.backupSpotId === id) state.backupSpotId = null;
+      state.primaryByPlan[state.currentPlanId] = id;
+      if (currentBackupId() === id) state.backupByPlan[state.currentPlanId] = null;
     }
     persistSpots();
     renderSpots();
@@ -2322,11 +2719,12 @@ window.APP_DATA = {
   }
 
   function setBackupSpot(id) {
-    if (state.backupSpotId === id) {
-      state.backupSpotId = null;
+    const cur = currentBackupId();
+    if (cur === id) {
+      state.backupByPlan[state.currentPlanId] = null;
     } else {
-      state.backupSpotId = id;
-      if (state.primarySpotId === id) state.primarySpotId = null;
+      state.backupByPlan[state.currentPlanId] = id;
+      if (currentPrimaryId() === id) state.primaryByPlan[state.currentPlanId] = null;
     }
     persistSpots();
     renderSpots();
@@ -2334,38 +2732,42 @@ window.APP_DATA = {
   }
 
   function persistSpots() {
-    if (state.primarySpotId) safeStorage.set(STORAGE_KEYS.primary, state.primarySpotId);
-    else safeStorage.remove(STORAGE_KEYS.primary);
-
-    if (state.backupSpotId) safeStorage.set(STORAGE_KEYS.backup, state.backupSpotId);
-    else safeStorage.remove(STORAGE_KEYS.backup);
+    writeJSON(STORAGE_KEYS.primaryByPlan, state.primaryByPlan);
+    writeJSON(STORAGE_KEYS.backupByPlan,  state.backupByPlan);
   }
 
   function updateSummary() {
-    const primary = findSpot(state.primarySpotId);
-    const backup  = findSpot(state.backupSpotId);
-    $("#summary-base").textContent = t("base");
-    $("#summary-primary").textContent = primary ? primary.name : t("notSet");
-    $("#summary-backup").textContent  = backup  ? backup.name  : t("notSet");
+    const primary = findSpot(currentPrimaryId());
+    const backup  = findSpot(currentBackupId());
+    const plan = getCurrentPlan();
+    const baseEl = $("#summary-base");
+    if (baseEl) baseEl.textContent = (plan.base && plan.base.city) || "—";
+    const pEl = $("#summary-primary"); if (pEl) pEl.textContent = primary ? primary.name : t("notSet");
+    const bEl = $("#summary-backup");  if (bEl) bEl.textContent = backup  ? backup.name  : t("notSet");
   }
 
+  // Procura um spot no plano ACTIVO apenas. Cross-plan lookups são
+  // intencionalmente bloqueados (IDs prefixados garantem unicidade).
   function findSpot(id) {
-    return window.APP_DATA.spots.find((s) => s.id === id);
+    if (!id) return undefined;
+    const plan = getCurrentPlan();
+    return (plan.spots || []).find((s) => s.id === id);
   }
 
   // -----------------------------------------------------------
   // Spot-adjusted phase times
   //
-  // Cada fase tem um tUTC genérico (média da região de León). Cada spot
-  // pode ter `phaseOffsets` (segundos) que ajustam o timing relativamente
-  // à referência. Quando o Spot Principal está definido, todos os timings
+  // Cada plano tem o seu próprio array de fases (`plan.phases[].tUTC`).
+  // Cada spot pode ter `phaseOffsets` (segundos) relativos a essa
+  // referência. Quando o Spot Principal está definido, todos os timings
   // (countdown, cues de áudio, lista de fases) usam os valores ajustados.
   // -----------------------------------------------------------
   function adjustedPhaseTimeMs(code, spotId) {
-    const phase = (window.APP_DATA.phases || []).find((p) => p.code === code);
+    const plan = getCurrentPlan();
+    const phase = (plan.phases || []).find((p) => p.code === code);
     if (!phase || !phase.tUTC) return null;
     let ms = new Date(phase.tUTC).getTime();
-    const id = spotId !== undefined ? spotId : state.primarySpotId;
+    const id = spotId !== undefined ? spotId : currentPrimaryId();
     if (id) {
       const spot = findSpot(id);
       const off = spot && spot.phaseOffsets && spot.phaseOffsets[code];
@@ -2411,7 +2813,8 @@ window.APP_DATA = {
     const linkSv = $("#streetview-open-sv");
     if (!panel || !frame) return;
 
-    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    const primaryId = currentPrimaryId();
+    const spot = primaryId ? findSpot(primaryId) : null;
     if (!spot || !spot.coords || spot.coords.length < 2) {
       panel.classList.add("hidden");
       // Liberta a iframe para não consumir rede em background.
@@ -2463,7 +2866,7 @@ window.APP_DATA = {
     const grid = $("#hotels-grid");
     grid.innerHTML = "";
 
-    window.APP_DATA.hotels.forEach((h) => {
+    (getCurrentPlan().hotels || []).forEach((h) => {
       const card = document.createElement("article");
       card.className = "card hotel-card";
 
@@ -2495,6 +2898,10 @@ window.APP_DATA = {
 
   // -----------------------------------------------------------
   // Render: Plano do dia (timeline)
+  //
+  // O texto pode conter {base}/{region} que são substituídos pelo plano
+  // activo em tempo de render. Permite manter um único timeline para
+  // ambos os planos.
   // -----------------------------------------------------------
   function renderTimeline() {
     const ol = $("#timeline");
@@ -2506,15 +2913,15 @@ window.APP_DATA = {
 
       const time = document.createElement("span");
       time.className = "timeline-time";
-      time.textContent = item.time;
+      time.textContent = substituteBase(item.time);
 
       const title = document.createElement("span");
       title.className = "timeline-title";
-      title.textContent = item.title;
+      title.textContent = substituteBase(item.title);
 
       const detail = document.createElement("span");
       detail.className = "timeline-detail";
-      detail.textContent = item.detail;
+      detail.textContent = substituteBase(item.detail);
 
       li.appendChild(time);
       li.appendChild(title);
@@ -2528,23 +2935,31 @@ window.APP_DATA = {
   // -----------------------------------------------------------
   function renderWeatherOptions() {
     const sel = $("#weather-select");
-    const prev = sel.value;
+    const opts = (getCurrentPlan().weatherOptions || []);
     sel.innerHTML = "";
-    window.APP_DATA.weatherOptions.forEach((opt) => {
+    opts.forEach((opt) => {
       const o = document.createElement("option");
       o.value = opt.value;
       o.textContent = opt.label;
       sel.appendChild(o);
     });
-    sel.value = prev || state.weather;
-    state.weather = sel.value;
+    // Estado persistido para este plano; fallback ao primeiro option.
+    let cur = state.weatherByPlan[state.currentPlanId];
+    if (!cur || !opts.some((o) => o.value === cur)) {
+      cur = opts[0] ? opts[0].value : "clear";
+      state.weatherByPlan[state.currentPlanId] = cur;
+      writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
+    }
+    sel.value = cur;
     updateWeatherRecommendation();
   }
 
   function renderDecisionTable() {
     const tbody = $("#decision-body");
     tbody.innerHTML = "";
-    window.APP_DATA.weatherOptions.forEach((opt) => {
+    const plan = getCurrentPlan();
+    const matrix = plan.decisionMatrix || {};
+    (plan.weatherOptions || []).forEach((opt) => {
       const tr = document.createElement("tr");
       tr.dataset.weather = opt.value;
 
@@ -2552,7 +2967,7 @@ window.APP_DATA = {
       tdCond.textContent = opt.label;
 
       const tdReco = document.createElement("td");
-      const mapEntry = window.APP_DATA.decisionMatrix[opt.value];
+      const mapEntry = matrix[opt.value];
       const spot = mapEntry ? findSpot(mapEntry.spotId) : null;
       tdReco.innerHTML = `<strong>${spot ? escape(spot.name) : "—"}</strong>` +
                          (mapEntry ? `<br><span class="card-section">${escape(mapEntry.reason)}</span>` : "");
@@ -2565,15 +2980,19 @@ window.APP_DATA = {
   }
 
   function highlightDecisionRow() {
+    const cur = state.weatherByPlan[state.currentPlanId];
     $$("#decision-body tr").forEach((tr) => {
-      tr.classList.toggle("is-active", tr.dataset.weather === state.weather);
+      tr.classList.toggle("is-active", tr.dataset.weather === cur);
     });
   }
 
   function updateWeatherRecommendation() {
-    const entry = window.APP_DATA.decisionMatrix[state.weather];
     const reco = $("#weather-reco");
-    if (!entry || !reco) return;
+    if (!reco) return;
+    const plan = getCurrentPlan();
+    const cur = state.weatherByPlan[state.currentPlanId];
+    const entry = (plan.decisionMatrix || {})[cur];
+    if (!entry) { reco.textContent = ""; return; }
     const spot = findSpot(entry.spotId);
     if (!spot) { reco.textContent = ""; return; }
 
@@ -2643,7 +3062,16 @@ window.APP_DATA = {
 
   // -----------------------------------------------------------
   // Mapa (Leaflet) com fallback
+  //
+  // Estratégia para suportar troca de plano sem partir o Leaflet:
+  //   - Uma só instância do mapa (criada uma vez em initMap).
+  //   - Os marcadores vivem num L.layerGroup; em mudança de plano,
+  //     limpa-se o group e re-adicionam-se os markers do novo plano.
+  //   - Em failure (Leaflet não carregou), cai para a mensagem de fallback.
   // -----------------------------------------------------------
+  let mapInstance = null;
+  let markerLayer = null;
+
   function initMap() {
     const mapEl = $("#map");
     const fallback = $("#map-fallback");
@@ -2656,37 +3084,56 @@ window.APP_DATA = {
     }
 
     try {
-      const center = [42.5987, -5.5671]; // León
-      const map = L.map(mapEl, { scrollWheelZoom: false }).setView(center, 9);
+      const plan = getCurrentPlan();
+      const center = (plan.base && plan.base.coords) || [42.5987, -5.5671];
+      mapInstance = L.map(mapEl, { scrollWheelZoom: false }).setView(center, 9);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 18,
         attribution: "© OpenStreetMap"
-      }).addTo(map);
+      }).addTo(mapInstance);
 
-      // Marker León
-      const leonMarker = L.marker(center).addTo(map).bindPopup("León (base)");
-
-      // Markers para spots
-      const markers = [leonMarker];
-      window.APP_DATA.spots.forEach((s) => {
-        if (!s.coords) return;
-        markers.push(L.marker(s.coords).addTo(map).bindPopup(`<strong>${escape(s.name)}</strong>`));
-      });
-
-      // Auto-fit a todos os marcadores, com zoom máximo limitado para
-      // não ficar demasiado próximo quando os spots estão todos juntos
-      // perto de León. Quando há spots distantes (ex.: Caxado, Galiza),
-      // o mapa zoom-out automaticamente para os incluir.
-      if (markers.length > 1) {
-        const group = L.featureGroup(markers);
-        map.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 9 });
-      }
+      markerLayer = L.layerGroup().addTo(mapInstance);
+      refreshMapMarkers();
     } catch (err) {
       console.warn("Map init failed:", err);
       mapEl.classList.add("hidden");
       fallback.classList.remove("hidden");
     }
+  }
+
+  // Limpa e re-adiciona os markers a partir do plano activo.
+  // Chamado em troca de plano. Sem efeito se Leaflet falhou.
+  function refreshMapMarkers() {
+    if (!mapInstance || !markerLayer) return;
+    try {
+      markerLayer.clearLayers();
+
+      const plan = getCurrentPlan();
+      const base = (plan.base && plan.base.coords) || null;
+      const baseLabel = ((plan.base && plan.base.city) || "") + " (base)";
+      const markers = [];
+
+      if (base) {
+        const baseMarker = L.marker(base).bindPopup(baseLabel);
+        markerLayer.addLayer(baseMarker);
+        markers.push(baseMarker);
+      }
+
+      (plan.spots || []).forEach((s) => {
+        if (!s.coords) return;
+        const m = L.marker(s.coords).bindPopup(`<strong>${escape(s.name)}</strong>`);
+        markerLayer.addLayer(m);
+        markers.push(m);
+      });
+
+      if (markers.length > 1) {
+        const group = L.featureGroup(markers);
+        mapInstance.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 9 });
+      } else if (base) {
+        mapInstance.setView(base, 9);
+      }
+    } catch (e) { /* ignore */ }
   }
 
   // -----------------------------------------------------------
@@ -2826,9 +3273,10 @@ window.APP_DATA = {
     if (!ol) return;
     ol.innerHTML = "";
 
-    const primary = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    const primaryId = currentPrimaryId();
+    const primary = primaryId ? findSpot(primaryId) : null;
 
-    window.APP_DATA.phases.forEach((p) => {
+    (getCurrentPlan().phases || []).forEach((p) => {
       const li = document.createElement("li");
       li.className = "phase-item";
       if (p.code === "C2" || p.code === "Max" || p.code === "C3") li.classList.add("is-totality");
@@ -2867,13 +3315,14 @@ window.APP_DATA = {
   function renderTimingsNotice() {
     const el = $("#timings-notice");
     if (!el) return;
-    const spot = state.primarySpotId ? findSpot(state.primarySpotId) : null;
+    const primaryId = currentPrimaryId();
+    const spot = primaryId ? findSpot(primaryId) : null;
     if (spot) {
       el.textContent = t("timingsAdjusted") + ": " + spot.name;
       el.classList.add("is-adjusted");
       el.classList.remove("is-generic");
     } else {
-      el.textContent = t("timingsGeneric");
+      el.textContent = t("timingsGenericTpl", { region: planRegion(getCurrentPlan()) });
       el.classList.add("is-generic");
       el.classList.remove("is-adjusted");
     }
@@ -2940,16 +3389,18 @@ window.APP_DATA = {
   function updateCountdown() {
     const el = $("#countdown");
     const val = $("#countdown-value");
-    if (!el || !val || !window.APP_DATA.eclipse) return;
+    if (!el || !val) return;
+    const plan = getCurrentPlan();
+    if (!plan.eclipse) return;
 
     // Usa timings ajustados ao Spot Principal quando definido,
-    // senão cai nos valores genéricos da região.
+    // senão cai nos valores genéricos do plano (eclipse.totality*UTC).
     const c2 = adjustedPhaseTimeMs("C2");
     const c3 = adjustedPhaseTimeMs("C3");
     const startMs = c2 != null ? c2
-                                : new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+                                : new Date(plan.eclipse.totalityStartUTC).getTime();
     const endMs   = c3 != null ? c3
-                                : new Date(window.APP_DATA.eclipse.totalityEndUTC).getTime();
+                                : new Date(plan.eclipse.totalityEndUTC).getTime();
     const now = Date.now();
 
     el.classList.remove("is-active", "is-done");
@@ -2989,8 +3440,11 @@ window.APP_DATA = {
   //   "atrasados" se ainda estiverem dentro da sua janela de catchup.
   //   Cues críticos (C3) têm staleText alternativo de segurança.
   // - sessionStorage para conjunto de cues já disparados (sobrevive
-  //   a refresh dentro de uma janela de catchup).
+  //   a refresh dentro de uma janela de catchup). É plan-scoped:
+  //   { leon: [ids], caxado: [ids] } — trocar plano carrega o set correcto.
   // - Visibility/focus → tick imediato para recuperar de suspensão.
+  // - Substituição {base}/{region} em runtime — permite partilhar texto
+  //   entre planos com cidades diferentes.
   // -----------------------------------------------------------
   const AUDIO_FIRED_KEY = "eclipse2026.audioFired";
 
@@ -3012,15 +3466,45 @@ window.APP_DATA = {
           && typeof window.SpeechSynthesisUtterance === "function";
     },
 
-    init() {
-      // Restaurar conjunto de cues disparados (sobrevive a refresh).
+    // Lê o objecto plan-scoped do sessionStorage.
+    readAllFired() {
       try {
         const raw = window.sessionStorage && window.sessionStorage.getItem(AUDIO_FIRED_KEY);
-        if (raw) {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) arr.forEach((id) => this.state.fired.add(id));
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (e) { return {}; }
+    },
+
+    writeAllFired(obj) {
+      try {
+        if (window.sessionStorage) {
+          window.sessionStorage.setItem(AUDIO_FIRED_KEY, JSON.stringify(obj));
         }
       } catch (e) { /* ignore */ }
+    },
+
+    // Persiste o Set actual no namespace do plano ACTIVO.
+    saveFiredForCurrentPlan() {
+      const all = this.readAllFired();
+      all[state.currentPlanId] = Array.from(this.state.fired);
+      this.writeAllFired(all);
+    },
+
+    // Carrega o Set guardado para o plano ACTIVO (chamado em init e setPlan).
+    loadFiredForCurrentPlan() {
+      this.state.fired = new Set();
+      const all = this.readAllFired();
+      const arr = all[state.currentPlanId];
+      if (Array.isArray(arr)) arr.forEach((id) => this.state.fired.add(id));
+    },
+
+    // Compatibilidade com chamadas antigas que tocavam num "saveFired".
+    saveFired() { this.saveFiredForCurrentPlan(); },
+
+    init() {
+      // Restaurar conjunto de cues disparados do plano actual.
+      this.loadFiredForCurrentPlan();
 
       // Em Chrome, getVoices() retorna [] no primeiro call e dispara este evento.
       if (this.isSupported()) {
@@ -3054,17 +3538,6 @@ window.APP_DATA = {
       this.renderStatus();
       this.renderCueList();
       this.renderNextCue();
-    },
-
-    saveFired() {
-      try {
-        if (window.sessionStorage) {
-          window.sessionStorage.setItem(
-            AUDIO_FIRED_KEY,
-            JSON.stringify(Array.from(this.state.fired))
-          );
-        }
-      } catch (e) { /* ignore */ }
     },
 
     toggleActivate() {
@@ -3152,11 +3625,14 @@ window.APP_DATA = {
 
     cueText(cue, stale) {
       const isPt = state.lang === "pt";
+      let raw;
       if (stale) {
-        return (isPt ? cue.staleTextPt : cue.staleTextEn) ||
-               (isPt ? cue.textPt : cue.textEn);
+        raw = (isPt ? cue.staleTextPt : cue.staleTextEn) ||
+              (isPt ? cue.textPt : cue.textEn);
+      } else {
+        raw = isPt ? cue.textPt : cue.textEn;
       }
-      return isPt ? cue.textPt : cue.textEn;
+      return substituteBase(raw);
     },
 
     tick() {
@@ -3353,18 +3829,24 @@ window.APP_DATA = {
   // -----------------------------------------------------------
   // Meteorologia (Open-Meteo)
   // -----------------------------------------------------------
-  // Cache em localStorage:
-  //   { updatedAt: ISO, spots: { spotId: forecast | { error } } }
+  // Cache em localStorage (plan-scoped):
+  //   { leon:   { updatedAt: ISO, spots: { spotId: forecast | { error } } },
+  //     caxado: { updatedAt: ISO, spots: { ... } } }
   function readMeteoCache() {
     if (state.meteoCache) return state.meteoCache;
     try {
       const raw = safeStorage.get(STORAGE_KEYS.meteo);
       if (raw) {
-        state.meteoCache = JSON.parse(raw);
-        return state.meteoCache;
+        const parsed = JSON.parse(raw);
+        // Aceita formato novo (plan-scoped); rejeita formato antigo.
+        if (parsed && typeof parsed === "object" && !parsed.spots) {
+          state.meteoCache = parsed;
+          return state.meteoCache;
+        }
       }
     } catch (e) { /* ignore */ }
-    return null;
+    state.meteoCache = {};
+    return state.meteoCache;
   }
 
   function writeMeteoCache(cache) {
@@ -3372,8 +3854,16 @@ window.APP_DATA = {
     safeStorage.set(STORAGE_KEYS.meteo, JSON.stringify(cache));
   }
 
+  // Devolve a cache do plano ACTIVO (ou null se não existir ainda).
+  function getCurrentMeteoCache() {
+    const all = readMeteoCache() || {};
+    return all[state.currentPlanId] || null;
+  }
+
   function daysUntilEclipse() {
-    const ecl = new Date(window.APP_DATA.eclipse.totalityStartUTC).getTime();
+    const plan = getCurrentPlan();
+    if (!plan.eclipse) return Infinity;
+    const ecl = new Date(plan.eclipse.totalityStartUTC).getTime();
     return Math.ceil((ecl - Date.now()) / 86400000);
   }
 
@@ -3391,6 +3881,10 @@ window.APP_DATA = {
     }
   }
 
+  // Guarda do plano para descartar respostas se o utilizador trocou de plano
+  // durante o fetch (race condition).
+  let meteoRequestPlanId = null;
+
   async function refreshMeteo() {
     const btn = $("#btn-refresh-meteo");
     const status = $("#meteo-status");
@@ -3400,12 +3894,16 @@ window.APP_DATA = {
     btn.textContent = t("weatherLoading");
     status.textContent = "";
 
+    const startedAtPlan = state.currentPlanId;
+    meteoRequestPlanId = startedAtPlan;
+
     const days = daysUntilEclipse();
     const outOfRange = days > window.APP_DATA.meteo.forecastHorizonDays;
 
     try {
+      const planSpots = (getCurrentPlan().spots || []);
       const results = await Promise.all(
-        window.APP_DATA.spots.map((s) =>
+        planSpots.map((s) =>
           fetchSpotForecast(s).then(
             (data) => ({ id: s.id, data }),
             (err)  => ({ id: s.id, error: err.message || String(err) })
@@ -3413,9 +3911,17 @@ window.APP_DATA = {
         )
       );
 
-      const cache = { updatedAt: new Date().toISOString(), spots: {} };
-      results.forEach((r) => { cache.spots[r.id] = r.error ? { error: r.error } : r.data; });
-      writeMeteoCache(cache);
+      // Se o utilizador mudou de plano durante o fetch, ignorar resultados.
+      if (state.currentPlanId !== startedAtPlan) {
+        return;
+      }
+
+      const allCache = readMeteoCache() || {};
+      allCache[startedAtPlan] = { updatedAt: new Date().toISOString(), spots: {} };
+      results.forEach((r) => {
+        allCache[startedAtPlan].spots[r.id] = r.error ? { error: r.error } : r.data;
+      });
+      writeMeteoCache(allCache);
 
       renderMeteo();
 
@@ -3427,10 +3933,14 @@ window.APP_DATA = {
       }
     } catch (err) {
       console.warn("Meteo refresh failed:", err);
-      status.textContent = t("weatherError");
+      if (state.currentPlanId === startedAtPlan) {
+        status.textContent = t("weatherError");
+      }
     } finally {
-      btn.disabled = false;
-      btn.textContent = btn.dataset.prev || t("refreshForecast");
+      if (state.currentPlanId === startedAtPlan) {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.prev || t("refreshForecast");
+      }
     }
   }
 
@@ -3512,7 +4022,7 @@ window.APP_DATA = {
     if (!grid) return;
     grid.innerHTML = "";
 
-    const cache = readMeteoCache();
+    const cache = getCurrentMeteoCache();
     if (!cache || !cache.spots) {
       statusEl.textContent = `${t("lastUpdated")}: ${t("never")}`;
       suggestEl.classList.add("hidden");
@@ -3528,8 +4038,9 @@ window.APP_DATA = {
     statusEl.textContent = `${t("lastUpdated")}: ${formatDateTime(cache.updatedAt)}`;
 
     const classifiedByCandidates = []; // for auto-suggestion
+    const plan = getCurrentPlan();
 
-    window.APP_DATA.spots.forEach((spot) => {
+    (plan.spots || []).forEach((spot) => {
       const data = cache.spots[spot.id];
       grid.appendChild(buildMeteoCard(spot, data, classifiedByCandidates));
     });
@@ -3539,8 +4050,9 @@ window.APP_DATA = {
     //   - caso contrário, usa a média regional (todos os spots disponíveis)
     let chosenCls = null;
     let chosenLabel = "";
-    if (state.primarySpotId) {
-      const c = classifiedByCandidates.find((c) => c.spotId === state.primarySpotId);
+    const primaryId = currentPrimaryId();
+    if (primaryId) {
+      const c = classifiedByCandidates.find((c) => c.spotId === primaryId);
       if (c && c.cls) {
         chosenCls = c.cls;
         chosenLabel = state.lang === "pt"
@@ -3572,7 +4084,7 @@ window.APP_DATA = {
 
       const text = document.createElement("p");
       text.className = "meteo-suggestion-text";
-      const matrixLabel = (window.APP_DATA.weatherOptions.find(o => o.value === chosenCls.mapTo) || {}).label || chosenCls.mapTo;
+      const matrixLabel = ((plan.weatherOptions || []).find((o) => o.value === chosenCls.mapTo) || {}).label || chosenCls.mapTo;
       text.innerHTML =
         `<strong>${escape(t("weatherSuggestion"))}:</strong> ${escape(matrixLabel)} ` +
         `<span class="meteo-suggestion-note">(${escape(t(chosenCls.key))} — ${escape(chosenLabel)})</span>`;
@@ -3696,7 +4208,8 @@ window.APP_DATA = {
     const valid = Array.from(sel.options).some((o) => o.value === matrixValue);
     if (!valid) return;
     sel.value = matrixValue;
-    state.weather = matrixValue;
+    state.weatherByPlan[state.currentPlanId] = matrixValue;
+    writeJSON(STORAGE_KEYS.weatherByPlan, state.weatherByPlan);
     updateWeatherRecommendation();
     highlightDecisionRow();
     // Scroll to plan section so user sees the effect
