@@ -1017,3 +1017,95 @@ h3 {
   .sun-diagram { background: #fff; }
   a { color: #000; text-decoration: none; }
 }
+
+/* ---------- Histórico Meteorológico (10 anos) ---------- */
+.section-intro {
+  margin: 4px 0 12px;
+  color: var(--muted, #4a5568);
+  font-size: 0.95rem;
+  max-width: 65ch;
+}
+.history-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.9rem;
+  color: var(--muted, #4a5568);
+}
+.history-stat strong {
+  color: var(--text, #1a202c);
+  font-size: 1rem;
+}
+.history-stat.is-good strong { color: #1a7f3a; }
+.history-stat.is-bad  strong { color: #b91c1c; }
+
+.history-bars {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+}
+.history-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #f1f5f9;
+  cursor: default;
+  min-height: 54px;
+}
+.history-bar-fill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  padding: 6px 0;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.25);
+}
+.history-bar-year {
+  background: rgba(0,0,0,0.04);
+  text-align: center;
+  font-size: 0.72rem;
+  padding: 2px 0;
+  color: var(--muted, #4a5568);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.history-bar.is-clear    .history-bar-fill { background: #1a7f3a; }   /* < 30% */
+.history-bar.is-marginal .history-bar-fill { background: #d97706; }   /* 30-60% */
+.history-bar.is-cloudy   .history-bar-fill { background: #b91c1c; }   /* > 60% */
+.history-bar.is-error    .history-bar-fill { background: #9ca3af; color: #fff; font-size: 0.95rem; }
+.history-bar.is-pending  .history-bar-fill { background: #cbd5e1; color: #475569; }
+
+.history-bar:focus-within { outline: 2px solid var(--primary, #2563eb); }
+
+/* Detalhe colapsado por ano (clique no bar) */
+.history-detail {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: var(--muted, #4a5568);
+}
+.history-detail strong { color: var(--text, #1a202c); }
+.history-detail.hidden { display: none; }
+
+@media (min-width: 640px) {
+  .history-bar { min-height: 64px; }
+  .history-bar-fill { font-size: 0.85rem; padding: 8px 0; }
+}
+
+@media print {
+  #btn-load-history { display: none !important; }
+  .history-bars { gap: 2px; }
+}

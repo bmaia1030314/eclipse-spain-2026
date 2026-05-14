@@ -159,6 +159,24 @@
       <p class="disclaimer" id="meteo-disclaimer"></p>
     </section>
 
+    <!-- ============== HISTÓRICO METEOROLÓGICO ============== -->
+    <section id="section-history" aria-labelledby="h-history">
+      <h2 id="h-history" data-i18n="sectionHistory">Histórico Meteorológico (10 anos)</h2>
+      <p class="section-intro" data-i18n="historyIntro">
+        Como esteve o céu no mesmo dia (12 Agosto), à mesma hora (≈ 20:00) nos últimos 10 anos. Não é previsão — é climatologia. Ajuda a perceber se cada spot é geralmente confiável.
+      </p>
+      <div class="meteo-controls">
+        <button type="button" id="btn-load-history" class="btn btn-primary" data-i18n="loadHistory">
+          Carregar histórico
+        </button>
+        <p class="meteo-status" id="history-status"></p>
+      </div>
+      <p class="disclaimer" data-i18n="historyDisclaimer">
+        Demora alguns segundos (até 80 pedidos à API de arquivo). Os dados ficam guardados no browser.
+      </p>
+      <div id="history-grid" class="cards-grid"></div>
+    </section>
+
     <!-- ============== PLANO DO DIA + MATRIZ ============== -->
     <section id="section-plan" aria-labelledby="h-plan">
       <h2 id="h-plan" data-i18n="sectionPlan">Plano do Dia</h2>

@@ -244,6 +244,33 @@ window.APP_DATA = {
     ]
   },
 
+  // ---------- Histórico Meteorológico (Open-Meteo Archive) ----------
+  // Para cada spot, descarrega o histórico do mesmo dia (12 Agosto) à mesma
+  // hora (20:00 local) nos últimos 10 anos. Permite avaliar a probabilidade
+  // climatológica de céu limpo. Cada (spot, ano) é uma chamada à API.
+  historyMeteo: {
+    endpoint: "https://archive-api.open-meteo.com/v1/archive",
+    yearsBack: 10,            // últimos 10 anos antes do eclipse
+    eclipseYear: 2026,
+    monthDay: "08-12",
+    hourLocal: 20,
+    timezone: "Europe/Madrid",
+    hourlyVars: [
+      "cloud_cover",
+      "cloud_cover_low",
+      "cloud_cover_mid",
+      "cloud_cover_high",
+      "temperature_2m",
+      "wind_speed_10m",
+      "precipitation"
+    ],
+    // Thresholds (% nuvens) para classificar cada ano.
+    thresholds: {
+      clear:    30,           // < 30% = excelente (verde)
+      marginal: 60            // 30..60% = marginal (amarelo). >60% = mau (vermelho)
+    }
+  },
+
   // ===================================================================
   // PLANOS (Plan A — León / Plan B — Caxado)
   // ===================================================================
@@ -649,6 +676,20 @@ window.APP_DATA = {
       streetviewOpenSv: "Abrir Street View",
       streetviewNoCoverage: "Sem cobertura Street View neste ponto exacto. Tenta abrir no Google Maps e arrastar o ícone até à estrada mais próxima.",
       sectionWeather: "Meteorologia (Open-Meteo)",
+      sectionHistory: "Histórico Meteorológico (10 anos)",
+      historyIntro: "Como esteve o céu no mesmo dia (12 Agosto), à mesma hora (≈ 20:00) nos últimos 10 anos. Não é previsão — é climatologia. Ajuda a perceber se cada spot é geralmente confiável.",
+      loadHistory: "Carregar histórico",
+      historyLoading: "A carregar histórico…",
+      historyDisclaimer: "Demora alguns segundos (até 80 pedidos à API de arquivo). Os dados ficam guardados no browser.",
+      historyEmpty: "Sem dados ainda. Clica em \u201CCarregar hist\u00F3rico\u201D.",
+      historySuccessRate: "anos com céu limpo",
+      historySuccessRateOf: "de",
+      historyAvgCloud: "Média de nuvens",
+      historyError: "Falha ao obter histórico para este spot.",
+      historyClearYears: "céu limpo",
+      historyMarginalYears: "marginal",
+      historyCloudyYears: "muito nublado",
+      historyHourLabel: "às 20:00 (CEST)",
       refreshForecast: "Atualizar previsão",
       lastUpdated: "Última atualização",
       never: "nunca",
@@ -761,6 +802,20 @@ window.APP_DATA = {
       streetviewOpenSv: "Open Street View",
       streetviewNoCoverage: "No Street View coverage at this exact point. Try opening in Google Maps and dragging the pegman to the nearest road.",
       sectionWeather: "Weather (Open-Meteo)",
+      sectionHistory: "Weather Climatology (last 10 years)",
+      historyIntro: "How the sky looked on the same day (Aug 12), at the same hour (≈ 20:00 local), over the last 10 years. Not a forecast — climatology. Helps you see which spots are historically reliable.",
+      loadHistory: "Load history",
+      historyLoading: "Loading history…",
+      historyDisclaimer: "Takes a few seconds (up to 80 archive-API calls). Data is stored in your browser.",
+      historyEmpty: "No data yet. Click \u201CLoad history\u201D.",
+      historySuccessRate: "years with clear sky",
+      historySuccessRateOf: "of",
+      historyAvgCloud: "Average clouds",
+      historyError: "Failed to fetch history for this spot.",
+      historyClearYears: "clear",
+      historyMarginalYears: "marginal",
+      historyCloudyYears: "cloudy",
+      historyHourLabel: "at 20:00 (CEST)",
       refreshForecast: "Refresh forecast",
       lastUpdated: "Last updated",
       never: "never",

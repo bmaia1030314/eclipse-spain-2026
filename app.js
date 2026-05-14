@@ -39,6 +39,7 @@
     weatherByPlan:  "eclipse2026.weatherByPlan",
     checklist:      "eclipse2026.checklist",
     meteo:          "eclipse2026.meteoCache.v2",
+    history:        "eclipse2026.historyCache",
     // legacy (v1)
     legacyPrimary:  "eclipse2026.primarySpot",
     legacyBackup:   "eclipse2026.backupSpot",
@@ -120,7 +121,8 @@
     weatherByPlan: { leon: "clear", caxado: "clear" },
     filters: { distance: "all", type: "all", priority: "all" },
     sortBy: "facility",
-    meteoCache: null     // in-memory mirror of forecast cache (whole object: { leon, caxado })
+    meteoCache: null,    // in-memory mirror of forecast cache (whole object: { leon, caxado })
+    historyCache: null   // in-memory mirror of 10-year history cache ({ leon, caxado })
   };
 
   // Devolve o plano activo a partir de window.APP_DATA.plans[currentPlanId].
@@ -221,6 +223,7 @@
     renderStreetView();
     renderMeteo();          // load from cache if available
     renderMeteoDisclaimer();
+    renderHistory();        // load history from cache if available
     startAppClock();        // ticks countdown + audio cues every 1s
 
     bindEvents();
@@ -295,6 +298,7 @@
       updateCountdown();
       renderMeteo();
       renderMeteoDisclaimer();
+      renderHistory();
       AudioCue.renderStatus();
       AudioCue.renderCueList();
       AudioCue.renderNextCue();
@@ -337,6 +341,9 @@
 
     // Meteorologia
     $("#btn-refresh-meteo").addEventListener("click", refreshMeteo);
+    // Histórico (10 anos)
+    const btnHist = $("#btn-load-history");
+    if (btnHist) btnHist.addEventListener("click", refreshHistory);
   }
 
   // -----------------------------------------------------------
@@ -389,6 +396,7 @@
     renderStreetView();
     renderMeteo();
     renderMeteoDisclaimer();
+    renderHistory();
     updateCountdown();
     AudioCue.renderStatus();
     AudioCue.renderCueList();
@@ -2069,6 +2077,309 @@
       const pad = (n) => String(n).padStart(2, "0");
       return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     } catch (e) { return iso; }
+  }
+
+  // -----------------------------------------------------------
+  // Histórico meteorológico (10 anos) — Open-Meteo Archive
+  // -----------------------------------------------------------
+  // Cache em localStorage (plan-scoped):
+  //   { leon:   { updatedAt: ISO,
+  //               spots: { spotId: { years: [{ year, cloud_total, cloud_low, cloud_mid,
+  //                                             cloud_high, temp, wind, precip,
+  //                                             error? }] | { error } } } },
+  //     caxado: { ... } }
+  function readHistoryCache() {
+    if (state.historyCache) return state.historyCache;
+    try {
+      const raw = safeStorage.get(STORAGE_KEYS.history);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          state.historyCache = parsed;
+          return state.historyCache;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    state.historyCache = {};
+    return state.historyCache;
+  }
+
+  function writeHistoryCache(cache) {
+    state.historyCache = cache;
+    try {
+      safeStorage.set(STORAGE_KEYS.history, JSON.stringify(cache));
+    } catch (e) { /* quota? ignore */ }
+  }
+
+  function getCurrentHistoryCache() {
+    const all = readHistoryCache() || {};
+    return all[state.currentPlanId] || null;
+  }
+
+  // Anos a consultar: (eclipseYear - yearsBack) .. (eclipseYear - 1)
+  function historyYears() {
+    const h = window.APP_DATA.historyMeteo;
+    if (!h) return [];
+    const out = [];
+    for (let i = h.yearsBack; i >= 1; i--) {
+      out.push(h.eclipseYear - i);
+    }
+    return out;
+  }
+
+  async function fetchSpotHistoryYear(spot, year) {
+    const h = window.APP_DATA.historyMeteo;
+    const dateStr = `${year}-${h.monthDay}`;
+    const url = new URL(h.endpoint);
+    url.searchParams.set("latitude",  String(spot.coords[0]));
+    url.searchParams.set("longitude", String(spot.coords[1]));
+    url.searchParams.set("start_date", dateStr);
+    url.searchParams.set("end_date",   dateStr);
+    url.searchParams.set("hourly",     h.hourlyVars.join(","));
+    url.searchParams.set("timezone",   h.timezone);
+    url.searchParams.set("windspeed_unit", "kmh");
+
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const body = await res.json();
+        if (body && body.reason) detail = body.reason;
+      } catch (e) { /* ignore */ }
+      throw new Error(detail);
+    }
+    const json = await res.json();
+    if (!json || !json.hourly || !Array.isArray(json.hourly.time)) {
+      throw new Error("Resposta inesperada");
+    }
+    const target = `${dateStr}T${String(h.hourLocal).padStart(2,"0")}:00`;
+    let idx = json.hourly.time.findIndex((t) => t === target);
+    if (idx === -1) {
+      // Fallback: alguns dias o índice 20 corresponde a 20:00 quando há shift
+      // por DST; usa directamente o índice da hora alvo se a lista tiver 24
+      // entradas.
+      if (json.hourly.time.length >= h.hourLocal + 1) idx = h.hourLocal;
+      else throw new Error("Hora alvo não encontrada");
+    }
+    const pick = (k) => json.hourly[k] ? json.hourly[k][idx] : null;
+    return {
+      year,
+      cloud_total: pick("cloud_cover"),
+      cloud_low:   pick("cloud_cover_low"),
+      cloud_mid:   pick("cloud_cover_mid"),
+      cloud_high:  pick("cloud_cover_high"),
+      temp:        pick("temperature_2m"),
+      wind:        pick("wind_speed_10m"),
+      precip:      pick("precipitation")
+    };
+  }
+
+  async function fetchSpotHistory(spot) {
+    const years = historyYears();
+    const results = await Promise.all(years.map((y) =>
+      fetchSpotHistoryYear(spot, y).catch((e) => ({ year: y, error: e.message || String(e) }))
+    ));
+    return { years: results };
+  }
+
+  // Race guard: capture planId at fetch start; discard if user switched plans.
+  let historyRequestPlanId = null;
+
+  async function refreshHistory() {
+    const btn = $("#btn-load-history");
+    const status = $("#history-status");
+    if (!btn) return;
+
+    btn.disabled = true;
+    btn.dataset.prev = btn.textContent;
+    btn.textContent = t("historyLoading");
+    if (status) status.textContent = t("historyLoading");
+
+    const planId = state.currentPlanId;
+    historyRequestPlanId = planId;
+
+    const plan = window.APP_DATA.plans[planId];
+    const spots = (plan && plan.spots) ? plan.spots : [];
+
+    try {
+      const results = await Promise.all(spots.map((s) =>
+        fetchSpotHistory(s).catch((e) => ({ error: e.message || String(e) }))
+      ));
+
+      // Se o plano foi trocado entretanto, descarta o resultado.
+      if (historyRequestPlanId !== planId) {
+        return;
+      }
+
+      const cache = readHistoryCache() || {};
+      cache[planId] = {
+        updatedAt: new Date().toISOString(),
+        spots: spots.reduce((acc, s, i) => { acc[s.id] = results[i]; return acc; }, {})
+      };
+      writeHistoryCache(cache);
+      renderHistory();
+      if (status) {
+        const updated = formatDateTime(cache[planId].updatedAt);
+        status.textContent = `${t("lastUpdated")}: ${updated}`;
+      }
+    } catch (e) {
+      if (status) status.textContent = t("historyError");
+    } finally {
+      // só reactiva se ainda estamos no plano original
+      if (historyRequestPlanId === planId) {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.prev || t("loadHistory");
+      } else {
+        btn.disabled = false;
+        btn.textContent = t("loadHistory");
+      }
+    }
+  }
+
+  function classifyHistoryYear(cloudTotal, thresholds) {
+    if (cloudTotal == null || isNaN(cloudTotal)) return "is-pending";
+    if (cloudTotal < thresholds.clear) return "is-clear";
+    if (cloudTotal < thresholds.marginal) return "is-marginal";
+    return "is-cloudy";
+  }
+
+  function renderHistory() {
+    const grid = $("#history-grid");
+    const status = $("#history-status");
+    if (!grid) return;
+
+    grid.innerHTML = "";
+
+    const planCache = getCurrentHistoryCache();
+    const plan = getCurrentPlan();
+    const spots = (plan && plan.spots) ? plan.spots : [];
+
+    // Update the button label (in case language changed).
+    const btn = $("#btn-load-history");
+    if (btn && !btn.disabled) btn.textContent = t("loadHistory");
+
+    // Status line (last update OR empty hint).
+    if (status) {
+      if (planCache && planCache.updatedAt) {
+        status.textContent = `${t("lastUpdated")}: ${formatDateTime(planCache.updatedAt)}`;
+      } else {
+        status.textContent = t("historyEmpty");
+      }
+    }
+
+    if (!spots.length) return;
+
+    const h = window.APP_DATA.historyMeteo;
+    const years = historyYears();
+
+    spots.forEach((spot) => {
+      const card = document.createElement("article");
+      card.className = "card history-card";
+
+      const title = document.createElement("h3");
+      title.textContent = spot.name;
+      card.appendChild(title);
+
+      // Either render bars from cache, or render pending placeholders.
+      const cacheEntry = planCache && planCache.spots ? planCache.spots[spot.id] : null;
+
+      if (cacheEntry && cacheEntry.error) {
+        const err = document.createElement("p");
+        err.className = "history-error";
+        err.textContent = `${t("historyError")} (${cacheEntry.error})`;
+        card.appendChild(err);
+        grid.appendChild(card);
+        return;
+      }
+
+      const yearsData = cacheEntry && Array.isArray(cacheEntry.years) ? cacheEntry.years : null;
+
+      // Stats line (computed only with valid entries).
+      const stats = document.createElement("p");
+      stats.className = "history-stats";
+
+      if (yearsData) {
+        const valid = yearsData.filter((y) => y && !y.error && typeof y.cloud_total === "number");
+        const clearN    = valid.filter((y) => y.cloud_total <  h.thresholds.clear).length;
+        const marginalN = valid.filter((y) => y.cloud_total >= h.thresholds.clear && y.cloud_total < h.thresholds.marginal).length;
+        const cloudyN   = valid.filter((y) => y.cloud_total >= h.thresholds.marginal).length;
+        const avg = valid.length ? Math.round(valid.reduce((a, y) => a + y.cloud_total, 0) / valid.length) : null;
+
+        const s1 = document.createElement("span");
+        s1.className = "history-stat" + (clearN >= 6 ? " is-good" : (clearN <= 2 ? " is-bad" : ""));
+        s1.innerHTML = `<strong>${clearN}</strong>/${valid.length} ${escape(t("historySuccessRate"))}`;
+        stats.appendChild(s1);
+
+        if (avg != null) {
+          const s2 = document.createElement("span");
+          s2.className = "history-stat";
+          s2.innerHTML = `${escape(t("historyAvgCloud"))}: <strong>${avg}%</strong>`;
+          stats.appendChild(s2);
+        }
+
+        const s3 = document.createElement("span");
+        s3.className = "history-stat";
+        s3.textContent = `${marginalN} ${t("historyMarginalYears")} · ${cloudyN} ${t("historyCloudyYears")}`;
+        stats.appendChild(s3);
+
+        const s4 = document.createElement("span");
+        s4.className = "history-stat history-hour-label";
+        s4.textContent = t("historyHourLabel");
+        stats.appendChild(s4);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className = "history-stat";
+        placeholder.textContent = t("historyEmpty");
+        stats.appendChild(placeholder);
+      }
+      card.appendChild(stats);
+
+      // Bars row (one per year).
+      const bars = document.createElement("div");
+      bars.className = "history-bars";
+
+      years.forEach((y) => {
+        const entry = yearsData ? yearsData.find((d) => d && d.year === y) : null;
+        const bar = document.createElement("div");
+        bar.className = "history-bar";
+
+        const fill = document.createElement("div");
+        fill.className = "history-bar-fill";
+
+        if (!entry) {
+          bar.classList.add("is-pending");
+          fill.textContent = "—";
+        } else if (entry.error) {
+          bar.classList.add("is-error");
+          fill.textContent = "!";
+          bar.title = entry.error;
+        } else {
+          const cls = classifyHistoryYear(entry.cloud_total, h.thresholds);
+          bar.classList.add(cls);
+          fill.textContent = (entry.cloud_total == null) ? "?" : `${Math.round(entry.cloud_total)}%`;
+          // Tooltip with breakdown.
+          const parts = [`${y}`, `cloud ${Math.round(entry.cloud_total)}%`];
+          if (typeof entry.cloud_low === "number")  parts.push(`low ${Math.round(entry.cloud_low)}%`);
+          if (typeof entry.cloud_mid === "number")  parts.push(`mid ${Math.round(entry.cloud_mid)}%`);
+          if (typeof entry.cloud_high === "number") parts.push(`high ${Math.round(entry.cloud_high)}%`);
+          if (typeof entry.temp === "number")  parts.push(`T ${Math.round(entry.temp)}°C`);
+          if (typeof entry.wind === "number")  parts.push(`wind ${Math.round(entry.wind)} km/h`);
+          if (typeof entry.precip === "number" && entry.precip > 0) parts.push(`precip ${entry.precip} mm`);
+          bar.title = parts.join(" · ");
+        }
+
+        const yr = document.createElement("div");
+        yr.className = "history-bar-year";
+        yr.textContent = String(y);
+
+        bar.appendChild(fill);
+        bar.appendChild(yr);
+        bars.appendChild(bar);
+      });
+      card.appendChild(bars);
+
+      grid.appendChild(card);
+    });
   }
 
   function applyAutoSuggestion(matrixValue) {
