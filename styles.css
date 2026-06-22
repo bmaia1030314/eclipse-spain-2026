@@ -1109,3 +1109,68 @@ h3 {
   #btn-load-history { display: none !important; }
   .history-bars { gap: 2px; }
 }
+
+/* ---------- Tour Guide (multi-day) ---------- */
+.tour-days {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tour-day-card {
+  padding: 20px;
+}
+.tour-day-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.tour-day-title {
+  font-size: 1.1rem;
+  margin: 0;
+}
+.tour-day-theme {
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.tour-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tour-item {
+  padding: 10px 12px;
+  background: var(--surface-alt, #f8fafc);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary, #2563eb);
+}
+.tour-item-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 4px;
+}
+.tour-item-name {
+  font-size: 0.95rem;
+}
+.tour-item-time {
+  font-size: 0.78rem;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.tour-item-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted, #4a5568);
+  line-height: 1.4;
+}
+@media print {
+  .tour-day-card { page-break-inside: avoid; }
+}

@@ -216,6 +216,7 @@
     renderHotels();
     renderChecklist();
     renderExpectations();
+    renderTour();
     renderNotes();
     renderSpots();
     updateSummary();
@@ -293,6 +294,7 @@
       renderHotels();
       renderChecklist();
       renderExpectations();
+      renderTour();
       renderNotes();
       updateWeatherRecommendation();
       updateCountdown();
@@ -391,6 +393,7 @@
     renderDecisionTable();
     renderHotels();
     renderSpots();
+    renderTour();
     updateSummary();
     refreshMapMarkers();
     renderStreetView();
@@ -1227,6 +1230,84 @@
 
       card.appendChild(title);
       card.appendChild(detail);
+      grid.appendChild(card);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Tour guide (region, multi-day)
+  // -----------------------------------------------------------
+  function renderTour() {
+    const grid = $("#tour-grid");
+    const section = $("#section-tour");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const plan = getCurrentPlan();
+    const tour = plan.tour;
+
+    // Only show tour section if the current plan has tour data.
+    if (!tour || !tour.length) {
+      if (section) section.style.display = "none";
+      return;
+    }
+    if (section) section.style.display = "";
+
+    const isEn = state.lang === "en";
+
+    tour.forEach((day) => {
+      const card = document.createElement("article");
+      card.className = "card tour-day-card";
+
+      const header = document.createElement("div");
+      header.className = "tour-day-header";
+
+      const dayTitle = document.createElement("h3");
+      dayTitle.className = "tour-day-title";
+      dayTitle.textContent = isEn ? (day.dayEn || day.day) : day.day;
+
+      const theme = document.createElement("span");
+      theme.className = "tour-day-theme badge badge-primary";
+      theme.textContent = isEn ? (day.themeEn || day.theme) : day.theme;
+
+      header.appendChild(dayTitle);
+      header.appendChild(theme);
+      card.appendChild(header);
+
+      const list = document.createElement("ul");
+      list.className = "tour-items";
+
+      day.items.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "tour-item";
+
+        const top = document.createElement("div");
+        top.className = "tour-item-top";
+
+        const itemName = document.createElement("strong");
+        itemName.className = "tour-item-name";
+        itemName.textContent = item.name;
+
+        if (item.time) {
+          const timeTag = document.createElement("span");
+          timeTag.className = "tour-item-time badge";
+          timeTag.textContent = item.time;
+          top.appendChild(itemName);
+          top.appendChild(timeTag);
+        } else {
+          top.appendChild(itemName);
+        }
+
+        const desc = document.createElement("p");
+        desc.className = "tour-item-desc";
+        desc.textContent = isEn ? (item.descEn || item.desc) : item.desc;
+
+        li.appendChild(top);
+        li.appendChild(desc);
+        list.appendChild(li);
+      });
+
+      card.appendChild(list);
       grid.appendChild(card);
     });
   }

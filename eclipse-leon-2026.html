@@ -3,7 +3,7 @@
   Eclipse Solar Total — León 2026
   Single-file build. Tudo (HTML + CSS + dados + lógica) está aqui.
   Apenas Leaflet é carregado via CDN — se falhar, o resto continua a funcionar.
-  Gerado em: 2026-06-22T13:45:48.245Z
+  Gerado em: 2026-06-22T13:51:36.904Z
 -->
 <html lang="pt-PT">
 <head>
@@ -1125,6 +1125,71 @@ h3 {
   .history-bars { gap: 2px; }
 }
 
+/* ---------- Tour Guide (multi-day) ---------- */
+.tour-days {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tour-day-card {
+  padding: 20px;
+}
+.tour-day-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+.tour-day-title {
+  font-size: 1.1rem;
+  margin: 0;
+}
+.tour-day-theme {
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.tour-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tour-item {
+  padding: 10px 12px;
+  background: var(--surface-alt, #f8fafc);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary, #2563eb);
+}
+.tour-item-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 4px;
+}
+.tour-item-name {
+  font-size: 0.95rem;
+}
+.tour-item-time {
+  font-size: 0.78rem;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.tour-item-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted, #4a5568);
+  line-height: 1.4;
+}
+@media print {
+  .tour-day-card { page-break-inside: avoid; }
+}
+
   </style>
 
   <!-- Leaflet (opcional, usa-se se carregar; existe fallback no app.js) -->
@@ -1378,6 +1443,15 @@ h3 {
     <section id="section-expectations" aria-labelledby="h-expectations">
       <h2 id="h-expectations" data-i18n="sectionExpectations">O que Esperar</h2>
       <div id="expectations-grid" class="cards-grid"></div>
+    </section>
+
+    <!-- ============== GUIA TURÍSTICO (11-13 AGO) ============== -->
+    <section id="section-tour" aria-labelledby="h-tour">
+      <h2 id="h-tour" data-i18n="sectionTour">Guia da Região (11–13 Agosto)</h2>
+      <p class="section-intro" data-i18n="tourIntro">
+        Sugestões para aproveitar os dias antes e depois do eclipse na região.
+      </p>
+      <div id="tour-grid" class="tour-days"></div>
     </section>
 
     <!-- ============== CHECKLIST ============== -->
@@ -2027,6 +2101,46 @@ window.APP_DATA = {
         { value: "haze",     label: "Algum haze / horizonte sujo" },
         { value: "clouds",   label: "Risco de nuvens isoladas" },
         { value: "mountain", label: "Estável e quer foco em fotos" }
+      ],
+
+      // Guia turístico 11–13 Agosto
+      tour: [
+        {
+          day: "11 Agosto (véspera)",
+          dayEn: "11 August (day before)",
+          theme: "Chegada + explorar Lugo",
+          themeEn: "Arrival + explore Lugo",
+          items: [
+            { name: "Muralla Romana de Lugo", desc: "Património UNESCO — 2 km de muralha romana percorrível no topo. Melhor ao final da tarde com luz dourada.", descEn: "UNESCO World Heritage — 2 km Roman wall walk on top. Best in late afternoon golden light.", time: "~1h30" },
+            { name: "Catedral de Santa María de Lugo", desc: "Catedral românica/barroca com claustro tranquilo. Entrada gratuita.", descEn: "Romanesque/Baroque cathedral with peaceful cloister. Free entry.", time: "~45 min" },
+            { name: "Praza Maior + tapas no centro", desc: "Zona de tapas animada. Experimentar polbo á feira (polvo), empanada galega e queijo de tetilla.", descEn: "Lively tapas area. Try polbo á feira (octopus), Galician empanada, and tetilla cheese.", time: "Jantar" },
+            { name: "Termas romanas (opcional)", desc: "Balneario de Lugo — águas termais ao lado do rio Miño. Relaxar antes do grande dia.", descEn: "Balneario de Lugo — thermal waters by the Miño river. Relax before the big day.", time: "~1h" }
+          ]
+        },
+        {
+          day: "12 Agosto (eclipse)",
+          dayEn: "12 August (eclipse day)",
+          theme: "Manhã livre + eclipse ao fim da tarde",
+          themeEn: "Free morning + eclipse in late afternoon",
+          items: [
+            { name: "Manhã: Ribeira Sacra (opcional curto)", desc: "Gargantas do Sil com vinhas em socalcos. Miradouro de Balcones de Madrid (~40 min de Lugo). Ou descansar para o eclipse.", descEn: "Sil river gorges with terraced vineyards. Balcones de Madrid viewpoint (~40 min from Lugo). Or rest for the eclipse.", time: "Manhã" },
+            { name: "Almoço cedo em Lugo", desc: "Comer bem antes de sair. Não queres estar a cozinhar durante a golden hour do eclipse.", descEn: "Eat well before leaving. You don't want to be cooking during the eclipse golden hour.", time: "13:00–14:30" },
+            { name: "Check meteo final + decisão de spot", desc: "Verificar previsão, decidir spot definitivo, carregar carro.", descEn: "Check forecast, decide final spot, load car.", time: "15:00–16:00" },
+            { name: "Eclipse — seguir o Plano do Dia", desc: "Ver secção 'Plano do Dia' acima. Sair ~17:30, chegar ao spot ~18:30–19:00.", descEn: "See 'Day Plan' section above. Leave ~17:30, arrive at spot ~18:30–19:00.", time: "17:30–21:30" }
+          ]
+        },
+        {
+          day: "13 Agosto (dia seguinte)",
+          dayEn: "13 August (day after)",
+          theme: "Dia de tour pela Galiza",
+          themeEn: "Galicia day trip",
+          items: [
+            { name: "Praia das Catedrais (Ribadeo)", desc: "Praia espetacular com arcos de pedra naturais de 30 m. Obrigatório ir na maré baixa — verificar horários. ~1h15 de Lugo.", descEn: "Spectacular beach with 30 m natural stone arches. Must visit at low tide — check schedules. ~1h15 from Lugo.", time: "Manhã (maré baixa)" },
+            { name: "O Cebreiro (Caminho de Santiago)", desc: "Aldeia de montanha a 1300 m no Caminho de Santiago. Pallozas (casas celtas), nevoeiro místico, queijo local. ~45 min de Lugo pela LU-633.", descEn: "Mountain village at 1300 m on the Camino de Santiago. Pallozas (Celtic houses), mystic fog, local cheese. ~45 min from Lugo via LU-633.", time: "~2h (ida + visita)" },
+            { name: "Santiago de Compostela", desc: "Catedral do Apóstolo, Praza do Obradoiro, centro histórico UNESCO. ~1h40 de Lugo pela AP-53/A-54.", descEn: "Cathedral of the Apostle, Praza do Obradoiro, UNESCO old town. ~1h40 from Lugo via AP-53/A-54.", time: "Tarde (se não for a Catedrais)" },
+            { name: "Volta por A Coruña (opcional)", desc: "Torre de Hércules (farol romano UNESCO), Praia de Riazor, marisco no porto. ~1h30 de Lugo.", descEn: "Tower of Hercules (Roman lighthouse UNESCO), Riazor beach, seafood at the port. ~1h30 from Lugo.", time: "Alternativa" }
+          ]
+        }
       ]
     }
 
@@ -2053,6 +2167,9 @@ window.APP_DATA = {
       sectionDecision: "Matriz de Decisão",
       sectionPhases: "Fases do Eclipse",
       sectionExpectations: "O que Esperar",
+      sectionTour: "Guia da Região (11–13 Agosto)",
+      tourIntro: "Sugestões para aproveitar os dias antes e depois do eclipse na região.",
+      tourNoData: "Guia turístico disponível apenas para o Plano B (Galiza).",
       sectionAudio: "Cues de Áudio (Dia do Eclipse)",
       audioIntro: "Avisos por voz que tocam no momento exato de cada fase. Útil quando estás a olhar para o Sol e não para o ecrã. São auxiliares — não substituem os óculos ISO nem o teu próprio julgamento.",
       audioActivate: "Ativar cues de áudio",
@@ -2179,6 +2296,9 @@ window.APP_DATA = {
       sectionDecision: "Decision Matrix",
       sectionPhases: "Eclipse Phases",
       sectionExpectations: "What to Expect",
+      sectionTour: "Regional Guide (11–13 August)",
+      tourIntro: "Suggestions to enjoy the days before and after the eclipse in the region.",
+      tourNoData: "Tour guide only available for Plan B (Galicia).",
       sectionAudio: "Audio Cues (Eclipse Day)",
       audioIntro: "Voice alerts that play at the exact moment of each phase. Useful when you're looking at the Sun and not the screen. They're auxiliary — not a substitute for ISO glasses or your own judgement.",
       audioActivate: "Activate audio cues",
@@ -2512,6 +2632,7 @@ window.APP_DATA = {
     renderHotels();
     renderChecklist();
     renderExpectations();
+    renderTour();
     renderNotes();
     renderSpots();
     updateSummary();
@@ -2589,6 +2710,7 @@ window.APP_DATA = {
       renderHotels();
       renderChecklist();
       renderExpectations();
+      renderTour();
       renderNotes();
       updateWeatherRecommendation();
       updateCountdown();
@@ -2687,6 +2809,7 @@ window.APP_DATA = {
     renderDecisionTable();
     renderHotels();
     renderSpots();
+    renderTour();
     updateSummary();
     refreshMapMarkers();
     renderStreetView();
@@ -3523,6 +3646,84 @@ window.APP_DATA = {
 
       card.appendChild(title);
       card.appendChild(detail);
+      grid.appendChild(card);
+    });
+  }
+
+  // -----------------------------------------------------------
+  // Tour guide (region, multi-day)
+  // -----------------------------------------------------------
+  function renderTour() {
+    const grid = $("#tour-grid");
+    const section = $("#section-tour");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const plan = getCurrentPlan();
+    const tour = plan.tour;
+
+    // Only show tour section if the current plan has tour data.
+    if (!tour || !tour.length) {
+      if (section) section.style.display = "none";
+      return;
+    }
+    if (section) section.style.display = "";
+
+    const isEn = state.lang === "en";
+
+    tour.forEach((day) => {
+      const card = document.createElement("article");
+      card.className = "card tour-day-card";
+
+      const header = document.createElement("div");
+      header.className = "tour-day-header";
+
+      const dayTitle = document.createElement("h3");
+      dayTitle.className = "tour-day-title";
+      dayTitle.textContent = isEn ? (day.dayEn || day.day) : day.day;
+
+      const theme = document.createElement("span");
+      theme.className = "tour-day-theme badge badge-primary";
+      theme.textContent = isEn ? (day.themeEn || day.theme) : day.theme;
+
+      header.appendChild(dayTitle);
+      header.appendChild(theme);
+      card.appendChild(header);
+
+      const list = document.createElement("ul");
+      list.className = "tour-items";
+
+      day.items.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "tour-item";
+
+        const top = document.createElement("div");
+        top.className = "tour-item-top";
+
+        const itemName = document.createElement("strong");
+        itemName.className = "tour-item-name";
+        itemName.textContent = item.name;
+
+        if (item.time) {
+          const timeTag = document.createElement("span");
+          timeTag.className = "tour-item-time badge";
+          timeTag.textContent = item.time;
+          top.appendChild(itemName);
+          top.appendChild(timeTag);
+        } else {
+          top.appendChild(itemName);
+        }
+
+        const desc = document.createElement("p");
+        desc.className = "tour-item-desc";
+        desc.textContent = isEn ? (item.descEn || item.desc) : item.desc;
+
+        li.appendChild(top);
+        li.appendChild(desc);
+        list.appendChild(li);
+      });
+
+      card.appendChild(list);
       grid.appendChild(card);
     });
   }

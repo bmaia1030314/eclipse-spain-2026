@@ -610,6 +610,46 @@ window.APP_DATA = {
         { value: "haze",     label: "Algum haze / horizonte sujo" },
         { value: "clouds",   label: "Risco de nuvens isoladas" },
         { value: "mountain", label: "Estável e quer foco em fotos" }
+      ],
+
+      // Guia turístico 11–13 Agosto
+      tour: [
+        {
+          day: "11 Agosto (véspera)",
+          dayEn: "11 August (day before)",
+          theme: "Chegada + explorar Lugo",
+          themeEn: "Arrival + explore Lugo",
+          items: [
+            { name: "Muralla Romana de Lugo", desc: "Património UNESCO — 2 km de muralha romana percorrível no topo. Melhor ao final da tarde com luz dourada.", descEn: "UNESCO World Heritage — 2 km Roman wall walk on top. Best in late afternoon golden light.", time: "~1h30" },
+            { name: "Catedral de Santa María de Lugo", desc: "Catedral românica/barroca com claustro tranquilo. Entrada gratuita.", descEn: "Romanesque/Baroque cathedral with peaceful cloister. Free entry.", time: "~45 min" },
+            { name: "Praza Maior + tapas no centro", desc: "Zona de tapas animada. Experimentar polbo á feira (polvo), empanada galega e queijo de tetilla.", descEn: "Lively tapas area. Try polbo á feira (octopus), Galician empanada, and tetilla cheese.", time: "Jantar" },
+            { name: "Termas romanas (opcional)", desc: "Balneario de Lugo — águas termais ao lado do rio Miño. Relaxar antes do grande dia.", descEn: "Balneario de Lugo — thermal waters by the Miño river. Relax before the big day.", time: "~1h" }
+          ]
+        },
+        {
+          day: "12 Agosto (eclipse)",
+          dayEn: "12 August (eclipse day)",
+          theme: "Manhã livre + eclipse ao fim da tarde",
+          themeEn: "Free morning + eclipse in late afternoon",
+          items: [
+            { name: "Manhã: Ribeira Sacra (opcional curto)", desc: "Gargantas do Sil com vinhas em socalcos. Miradouro de Balcones de Madrid (~40 min de Lugo). Ou descansar para o eclipse.", descEn: "Sil river gorges with terraced vineyards. Balcones de Madrid viewpoint (~40 min from Lugo). Or rest for the eclipse.", time: "Manhã" },
+            { name: "Almoço cedo em Lugo", desc: "Comer bem antes de sair. Não queres estar a cozinhar durante a golden hour do eclipse.", descEn: "Eat well before leaving. You don't want to be cooking during the eclipse golden hour.", time: "13:00–14:30" },
+            { name: "Check meteo final + decisão de spot", desc: "Verificar previsão, decidir spot definitivo, carregar carro.", descEn: "Check forecast, decide final spot, load car.", time: "15:00–16:00" },
+            { name: "Eclipse — seguir o Plano do Dia", desc: "Ver secção 'Plano do Dia' acima. Sair ~17:30, chegar ao spot ~18:30–19:00.", descEn: "See 'Day Plan' section above. Leave ~17:30, arrive at spot ~18:30–19:00.", time: "17:30–21:30" }
+          ]
+        },
+        {
+          day: "13 Agosto (dia seguinte)",
+          dayEn: "13 August (day after)",
+          theme: "Dia de tour pela Galiza",
+          themeEn: "Galicia day trip",
+          items: [
+            { name: "Praia das Catedrais (Ribadeo)", desc: "Praia espetacular com arcos de pedra naturais de 30 m. Obrigatório ir na maré baixa — verificar horários. ~1h15 de Lugo.", descEn: "Spectacular beach with 30 m natural stone arches. Must visit at low tide — check schedules. ~1h15 from Lugo.", time: "Manhã (maré baixa)" },
+            { name: "O Cebreiro (Caminho de Santiago)", desc: "Aldeia de montanha a 1300 m no Caminho de Santiago. Pallozas (casas celtas), nevoeiro místico, queijo local. ~45 min de Lugo pela LU-633.", descEn: "Mountain village at 1300 m on the Camino de Santiago. Pallozas (Celtic houses), mystic fog, local cheese. ~45 min from Lugo via LU-633.", time: "~2h (ida + visita)" },
+            { name: "Santiago de Compostela", desc: "Catedral do Apóstolo, Praza do Obradoiro, centro histórico UNESCO. ~1h40 de Lugo pela AP-53/A-54.", descEn: "Cathedral of the Apostle, Praza do Obradoiro, UNESCO old town. ~1h40 from Lugo via AP-53/A-54.", time: "Tarde (se não for a Catedrais)" },
+            { name: "Volta por A Coruña (opcional)", desc: "Torre de Hércules (farol romano UNESCO), Praia de Riazor, marisco no porto. ~1h30 de Lugo.", descEn: "Tower of Hercules (Roman lighthouse UNESCO), Riazor beach, seafood at the port. ~1h30 from Lugo.", time: "Alternativa" }
+          ]
+        }
       ]
     }
 
@@ -636,6 +676,9 @@ window.APP_DATA = {
       sectionDecision: "Matriz de Decisão",
       sectionPhases: "Fases do Eclipse",
       sectionExpectations: "O que Esperar",
+      sectionTour: "Guia da Região (11–13 Agosto)",
+      tourIntro: "Sugestões para aproveitar os dias antes e depois do eclipse na região.",
+      tourNoData: "Guia turístico disponível apenas para o Plano B (Galiza).",
       sectionAudio: "Cues de Áudio (Dia do Eclipse)",
       audioIntro: "Avisos por voz que tocam no momento exato de cada fase. Útil quando estás a olhar para o Sol e não para o ecrã. São auxiliares — não substituem os óculos ISO nem o teu próprio julgamento.",
       audioActivate: "Ativar cues de áudio",
@@ -762,6 +805,9 @@ window.APP_DATA = {
       sectionDecision: "Decision Matrix",
       sectionPhases: "Eclipse Phases",
       sectionExpectations: "What to Expect",
+      sectionTour: "Regional Guide (11–13 August)",
+      tourIntro: "Suggestions to enjoy the days before and after the eclipse in the region.",
+      tourNoData: "Tour guide only available for Plan B (Galicia).",
       sectionAudio: "Audio Cues (Eclipse Day)",
       audioIntro: "Voice alerts that play at the exact moment of each phase. Useful when you're looking at the Sun and not the screen. They're auxiliary — not a substitute for ISO glasses or your own judgement.",
       audioActivate: "Activate audio cues",
